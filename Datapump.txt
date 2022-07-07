@@ -1,22 +1,21 @@
 
 Schema/table refresh with expdp prod to lower enviroment.
-
+==========================================================================
 1. connect to source server and database.
 2. find size of the schema and distinct tablespace,temporary tablespace. 
 3. Check the object count and invalid objects.
 4. Take the backup of the schema grants and privileges. 
 5. Take schemas backup at source
-6. check the for any errors. No errors proceed to transfer dumps target side.
+6. check the logfile for any errors. No errors proceed to transfer dumps target side.
 7. After transfering dumps check compare source and target for distinct/size tablespace and disgroup size.
 8. If distinct tablespace is not present then take DDL from source and create it in target.
 9. Do checksum of the dumps size both source and target.
-10.Before importing  check ticket application team mentioned to take any backup.
+10.Before importing  check ticket application team has mentioned anything to take any backup at target.
 11. start import
 12. Run the grants and privileges taken at source.
 13. check user account_status and can able to connect or not.
 14. check invalid count and run utlrp script
 15. gather stats.
-
 
 
 step:1  connect to source server and database.
@@ -51,7 +50,7 @@ step:4 Take the backup of the schema grants and privileges.
 		SELECT dbms_metadata.get_ddl('USER','&USR') ||';' FROM dual;
 		SELECT 'grant ' || GRANTED_ROLE ||' to ' || GRANTEE ||';' FROM dba_role_privs WHERE grantee=upper('&USR');
 		SELECT 'grant ' ||  PRIVILEGE ||' to ' || GRANTEE ||';'  FROM dba_sys_privs WHERE grantee=upper('&USR');
-		select 'grant '||privilege||' on '||owner||'.'||table_name||' to '||grantee ||case when grantable = 'YES' then ' with grant option' else null end ||';' from dba_tab_privs where grantee=upper('&USR');
+		select 'grant '||privilege||' on '||owner||'.'||table_name||' to '||grantee ||case when grantable = 'YES' then ' with grant option' else null end ||';'                from dba_tab_privs where grantee=upper('&USR');
 
 
 step:5   Take schemas backup at source
@@ -64,7 +63,7 @@ step:8   compare in target distinct tablespace and its size from source if not a
 ====== 
                      select dbms_metadata.get_ddl ( 'TABLESPACE', 'NGLCAT_I1_128K' ) from dual;
 
-step 9: checksum of the dumps size both source and target
+step 9: After transfer Do checksum of the dumps size both source and target
 =======
 step 10: before starting import check the ticket application team as mention to take  any backup.
 =======
@@ -83,7 +82,7 @@ step 15: collect gather stat
       
 			TABLE
 			********
-			exec DBMS_STATS.GATHER_TABLE_STATS (ownname => '&OWNER' , tabname => '&TABLE_NAME', cascade => true, estimate_percent => dbms_stats.auto_sample_size, method_opt=>'FOR ALL COLUMNS SIZE AUTO', granularity => 'ALL', degree => 16);		
+			exec DBMS_STATS.GATHER_TABLE_STATS (ownname => '&OWNER' , tabname => '&TABLE_NAME', cascade => true, estimate_percent => 					dbms_stats.auto_sample_size, method_opt=>'FOR ALL COLUMNS SIZE AUTO', granularity => 'ALL', degree => 16);		
 
 			Schema
 			*******
@@ -117,7 +116,8 @@ END LOOP;
 /
 
 TO UPDATE  SEQUENCES ON TEST SERVER
-		 1. To drop sequences on test server run output of the following command
+=========================================
+1. To drop sequences on test server run output of the following command
 		SELECT  ‘DROP SEQUENCE ‘    || sequence_name  || ‘;’ FROM dba_sequences where SEQUENCE_OWNER=’&USER’
 		ORDER BY sequence_name;
 		 2. TO recreate sequences on test server do the following steps
@@ -133,10 +133,6 @@ TO UPDATE  SEQUENCES ON TEST SERVER
 		
 		select 'create sequence '||sequence_name||' start with '|| last_number+1||';' from user_sequences
 		
-		
-		
-		
-
     Remove the jobs of BTM user at the time of import for that run below four scripts in test then it will show the scripts to remove jobs and run that scripts 
 		
 		select 'exec dbms_ijob.broken('|| job ||',true);' from dba_jobs where broken = 'N' and schema_user IN ('BTM');
@@ -145,6 +141,7 @@ TO UPDATE  SEQUENCES ON TEST SERVER
 		select 'exec dbms_ijob.remove('|| job ||');' from dba_jobs where broken = 'Y' and schema_user IN ('BTM');
 
 synonyms backup:
+===================
       SELECT 'CREATE PUBLIC SYNONYM ' || synonym_name || ' FOR '|| table_owner || '.' || table_name || ';' cmd
       FROM dba_synonyms WHERE TABLE_OWNER IN ([list of schemas]) AND owner='PUBLIC';
 
@@ -152,6 +149,7 @@ synonyms backup:
 
 
 Taking grant backups:
+===========================
 		set lines 300 pages 300 head off
 		select 'create user TEST identified by sbux2017 default tablespace '
 		||default_tablespace|| ' temporary tablespace '||temporary_tablespace||' profile '|| profile||';'
@@ -188,11 +186,13 @@ Taking grant backups:
 		SQL> select ' grant '||privilege||' on ' ||owner||'.'||table_name||' to ' ||grantee||';' from dba_tab_privs where grantee='MPD';
 
 To kill session in target:
+===============================
  		select 'alter system kill session '''||sid|| ',' ||serial#||''''||' immediate;' from gv$session where username='&MPD';
 
 To check DB LINK => select owner,db_link from dba_db_links where owner='MPD';
 
 To create profile:
+========================
 		set long 20000 longchunksize 20000 pagesize 0 linesize 1000 feedback off verify off trimspool on
 		column ddl format a1000
 		set linesize 80 pagesize 14 feedback on verify on
@@ -203,6 +203,7 @@ To create profile:
 		/
 		
 Object Dependencies:
+============================
 		col schema_name for a15
 		col view_name for a20
 		col referenced_name for a20
@@ -224,6 +225,7 @@ Object Dependencies:
 		select TABLE_NAME,GRANTOR,GRANTEE,PRIVILEGE from dba_tab_privs where TABLE_NAME='&TABLE_NAME'; 
 		
 Invalid object:
+============================
 		
 		select owner, object_type, status, count(*)
 		from sys.dba_objects
@@ -232,6 +234,7 @@ Invalid object:
 		order by owner, object_type, status;
 		 
 To disable the constraints :
+======================================
 
 		sqlplus -s / as sysdba << EOF
 		set heading off feedback off pagesize 0 linesize 150 echo off
@@ -285,11 +288,6 @@ To disable the constraints :
 		SQL> select count(*) from dba_indexes;
 		SQL> select count(*) from dba_constraints;
 		
-		
-		
 	
-		
-		
-		
-		
-
+	NOTE: PLEASE TEST THIS SCRIPT IN OUR TEST ENVIROMENT THEN RUN IN PRODUCTION 
+	
