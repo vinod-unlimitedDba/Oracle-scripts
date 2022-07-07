@@ -1,0 +1,60 @@
+
+Shirnk datafile
+**********************
+set linesize 1000 pagesize 0 feedback off trimspool on
+with
+ hwm as (
+  -- get highest block id from each datafiles ( from x$ktfbue as we don't need all joins from dba_extents )
+  select /*+ materialize */ ktfbuesegtsn ts#,ktfbuefno relative_fno,max(ktfbuebno+ktfbueblks-1) hwm_blocks
+  from sys.x$ktfbue group by ktfbuefno,ktfbuesegtsn
+ ),
+ hwmts as (
+  -- join ts# with tablespace_name
+  select name tablespace_name,relative_fno,hwm_blocks
+  from hwm join v$tablespace using(ts#)
+ ),
+ hwmdf as (
+  -- join with datafiles, put 5M minimum for datafiles with no extents
+  select file_name,nvl(hwm_blocks*(bytes/blocks),5*1024*1024) hwm_bytes,bytes,autoextensible,maxbytes
+  from hwmts right join dba_data_files using(tablespace_name,relative_fno)
+ )
+select
+ case when autoextensible='YES' and maxbytes>=bytes
+ then -- we generate resize statements only if autoextensible can grow back to current size
+  '/* reclaim '||to_char(ceil((bytes-hwm_bytes)/1024/1024),999999)
+   ||'M from '||to_char(ceil(bytes/1024/1024),999999)||'M */ '
+   ||'alter database datafile '''||file_name||''' resize '||ceil(hwm_bytes/1024/1024)||'M;'
+ else -- generate only a comment when autoextensible is off
+  '/* reclaim '||to_char(ceil((bytes-hwm_bytes)/1024/1024),999999)
+   ||'M from '||to_char(ceil(bytes/1024/1024),999999)
+   ||'M after setting autoextensible maxsize higher than current size for file '
+   || file_name||' */'
+ end SQL
+from hwmdf
+where
+ bytes-hwm_bytes>1024*1024 -- resize only if at least 1MB can be reclaimed
+order by bytes-hwm_bytes desc
+/
+
+set verify off
+column file_name format a50 word_wrapped
+column smallest format 999,990 heading "Smallest|Size|Poss."
+column currsize format 999,990 heading "Current|Size"
+column savings  format 999,990 heading "Poss.|Savings"
+break on report
+compute sum of savings on report
+column value new_val blksize
+select value from v$parameter where name = 'db_block_size';
+/
+select file_name,
+       ceil( (nvl(hwm,1)*&&blksize)/1024/1024 ) smallest,
+       ceil( blocks*&&blksize/1024/1024) currsize,
+       ceil( blocks*&&blksize/1024/1024) -
+       ceil( (nvl(hwm,1)*&&blksize)/1024/1024 ) savings
+from dba_data_files a,
+     ( select file_id, max(block_id+blocks-1) hwm
+         from dba_extents
+        group by file_id ) b
+where a.file_id = b.file_id(+) order by savings desc
+/
+
