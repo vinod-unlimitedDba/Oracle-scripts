@@ -35,7 +35,7 @@ Finding tablespace usage in GB
         where t.tablespace_name = f.tablespace_name (+)
         order by t.tablespace_name;
 
- Monitoring all puggale tablespace in 12c
+ Monitoring all puggable tablespace in 12c
 ===========================================
 
 SET LINES 1320 PAGES 1000
