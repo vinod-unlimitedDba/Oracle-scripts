@@ -1,0 +1,295 @@
+
+Schema/table refresh with expdp prod to lower enviroment.
+
+1. connect to source server and database.
+2. find size of the schema and distinct tablespace,temporary tablespace. 
+3. Check the object count and invalid objects.
+4. Take the backup of the schema grants and privileges. 
+5. Take schemas backup at source
+6. check the for any errors. No errors proceed to transfer dumps target side.
+7. After transfering dumps check compare source and target for distinct/size tablespace and disgroup size.
+8. If distinct tablespace is not present then take DDL from source and create it in target.
+9. Do checksum of the dumps size both source and target.
+10.Before importing  check ticket application team mentioned to take any backup.
+11. start import
+12. Run the grants and privileges taken at source.
+13. check user account_status and can able to connect or not.
+14. check invalid count and run utlrp script
+15. gather stats.
+
+
+
+step:1  connect to source server and database.
+=======
+step:2  find size of the schema and distinct tablespace,temporary tablespace.
+=======
+	Set lines 750 pages 1000            
+	break on report 
+        compute sum of size_gb on report         
+          Col owner for a20
+	SELECT owner,tablespace_name,sum(bytes/1024/1024/1024) AS size_gb FROM dba_segments WHERE OWNER='&USR' GROUP BY   owner,tablespace_name;
+
+
+	 select USERNAME,ACCOUNT_STATUS,DEFAULT_TABLESPACE,TEMPORARY_TABLESPACE,PROFILE from      dba_users where username='&USR';
+
+step:3 Check the object count and invalid objects.
+=======               
+              select object_type,count(1) from dba_objects where owner='&USR' group by rollup(object_type);
+
+	   select object_type,status,count(1) from dba_objects where owner='&USR' group by rollup(object_type),status;
+
+step:4 Take the backup of the schema grants and privileges. 
+=======
+           select 'GRANT '||PRIVILEGE||' ON '|| OWNER || '.'|| TABLE_NAME || ' TO ' ||GRANTEE||';' from dba_tab_privs where GRANTEE='&USR' ;
+           select 'GRANT '||PRIVILEGE||' TO '||GRANTEE||';' from dba_sys_privs where GRANTEE='&USR';
+           select 'GRANT '||GRANTED_ROLE||' TO '||GRANTEE||';' from dba_role_privs where GRANTEE='&USR';
+
+
+		set linesize 2000
+		set heading off
+		SET long 200000000
+		SELECT dbms_metadata.get_ddl('USER','&USR') ||';' FROM dual;
+		SELECT 'grant ' || GRANTED_ROLE ||' to ' || GRANTEE ||';' FROM dba_role_privs WHERE grantee=upper('&USR');
+		SELECT 'grant ' ||  PRIVILEGE ||' to ' || GRANTEE ||';'  FROM dba_sys_privs WHERE grantee=upper('&USR');
+		select 'grant '||privilege||' on '||owner||'.'||table_name||' to '||grantee ||case when grantable = 'YES' then ' with grant option' else null end ||';' from dba_tab_privs where grantee=upper('&USR');
+
+
+step:5   Take schemas backup at source
+======     
+step:6   check the for any errors. No errors proceed to transfer dumps target side.
+======
+step:7   check diskgroup space and file system space before transfering 
+======= 
+step:8   compare in target distinct tablespace and its size from source if not available create using DDL SCRIPT.
+====== 
+                     select dbms_metadata.get_ddl ( 'TABLESPACE', 'NGLCAT_I1_128K' ) from dual;
+
+step 9: checksum of the dumps size both source and target
+=======
+step 10: before starting import check the ticket application team as mention to take  any backup.
+=======
+step 11: start import
+=======
+step 12: Run the grants and privileges taken at source.
+=======
+step 13: check user account_status and can able to connect or not.
+========
+step 14: check invalid count and run utlrp script
+=========                 
+                 @?/rdbms/admin/utlrp.sql
+
+step 15: collect gather stat
+======== 
+      
+			TABLE
+			********
+			exec DBMS_STATS.GATHER_TABLE_STATS (ownname => '&OWNER' , tabname => '&TABLE_NAME', cascade => true, estimate_percent => dbms_stats.auto_sample_size, method_opt=>'FOR ALL COLUMNS SIZE AUTO', granularity => 'ALL', degree => 16);		
+
+			Schema
+			*******
+			exec dbms_stats.gather_schema_stats(ownname=>'&schema_name', CASCADE=>TRUE,ESTIMATE_PERCENT=>dbms_stats.auto_sample_size,degree =>5);
+			           
+useful script :
+=================
+    
+script will drop all the objects owned by a schema. This will not delete the user but only deletes the objects
+ 
+ 
+SET SERVEROUTPUT ON SIZE 1000000
+set verify off
+BEGIN
+FOR c1 IN (SELECT OWNER,table_name, constraint_name FROM dba_constraints WHERE constraint_type = 'R' and owner=upper('&shema_name')) LOOP EXECUTE IMMEDIATE
+ 'ALTER TABLE '||' "'||c1.owner||'"."'||c1.table_name||'" DROP CONSTRAINT ' || c1.constraint_name; END LOOP;
+ FOR c1 IN (SELECT owner,object_name,object_type FROM dba_objects where owner=upper('&shema_name')) LOOP BEGIN
+ IF c1.object_type = 'TYPE' THEN
+ EXECUTE IMMEDIATE 'DROP '||c1.object_type||' "'||c1.owner||'"."'||c1.object_name||'" FORCE';
+ END IF;
+ IF c1.object_type != 'DATABASE LINK' THEN
+ EXECUTE IMMEDIATE 'DROP '||c1.object_type||' "'||c1.owner||'"."'||c1.object_name||'"';
+ END IF;
+EXCEPTION
+WHEN OTHERS THEN
+NULL;
+END;
+END LOOP;
+ EXECUTE IMMEDIATE('purge dba_recyclebin');
+ END;
+/
+
+TO UPDATE  SEQUENCES ON TEST SERVER
+		 1. To drop sequences on test server run output of the following command
+		SELECT  ‘DROP SEQUENCE ‘    || sequence_name  || ‘;’ FROM dba_sequences where SEQUENCE_OWNER=’&USER’
+		ORDER BY sequence_name;
+		 2. TO recreate sequences on test server do the following steps
+		*run the following query on production server
+		SELECT ‘CREATE SEQUENCE ‘  || sequence_name ||  ‘ INCREMENT BY ‘    || increment_by  ||
+		        ‘ START WITH  ‘ ||TO_CHAR(LAST_NUMBER+1) ||
+		        ‘ MINVALUE ‘        || MIN_VALUE     ||
+		        ‘ MAXVALUE ‘        || MAX_VALUE     ||
+		          CASE cycle_flag WHEN ‘N’ THEN ‘ NOCYCLE ‘ ELSE ‘ CYCLE ‘ END ||
+		          CASE order_flag WHEN ‘N’ THEN ‘ NOORDER ‘ ELSE ‘ ORDER ‘ END ||
+		        ‘ CACHE ‘ || CACHE_SIZE || ‘;’
+		  FROM dba_sequences where SEQUENCE_OWNER='&USER'  ORDER BY sequence_name;
+		
+		select 'create sequence '||sequence_name||' start with '|| last_number+1||';' from user_sequences
+		
+		
+		
+		
+
+    Remove the jobs of BTM user at the time of import for that run below four scripts in test then it will show the scripts to remove jobs and run that scripts 
+		
+		select 'exec dbms_ijob.broken('|| job ||',true);' from dba_jobs where broken = 'N' and schema_user IN ('BTM');
+		select 'exec dbms_ijob.remove('|| job ||');' from dba_jobs where broken = 'Y' and schema_user IN ('BTM');
+		select 'exec dbms_ijob.broken('|| job ||',true);' from dba_jobs where broken = 'N' and schema_user IN ('BTM');
+		select 'exec dbms_ijob.remove('|| job ||');' from dba_jobs where broken = 'Y' and schema_user IN ('BTM');
+
+synonyms backup:
+      SELECT 'CREATE PUBLIC SYNONYM ' || synonym_name || ' FOR '|| table_owner || '.' || table_name || ';' cmd
+      FROM dba_synonyms WHERE TABLE_OWNER IN ([list of schemas]) AND owner='PUBLIC';
+
+      select 'create public synonym '||table_name||' for '||owner||'.'||table_name||';' from user_tables;
+
+
+Taking grant backups:
+		set lines 300 pages 300 head off
+		select 'create user TEST identified by sbux2017 default tablespace '
+		||default_tablespace|| ' temporary tablespace '||temporary_tablespace||' profile '|| profile||';'
+		from   sys.dba_users
+		where  username = upper('MERCURY');
+
+		select 'grant '||granted_role||' to TEST'||
+		       decode(ADMIN_OPTION, 'YES', ' WITH ADMIN OPTION')||';'
+		from   sys.dba_role_privs
+		where  grantee = upper('MERCURY');
+
+		select 'grant '||privilege||' to TEST'||
+		       decode(ADMIN_OPTION, 'YES', ' WITH ADMIN OPTION')||';'
+		from   sys.dba_sys_privs where  grantee = upper('MERCURY');
+
+		select 'grant '||privilege||' on '||owner||'.'||table_name||' to TEST;'    
+		from   sys.dba_tab_privs
+		where  grantee = upper('MERCURY');
+
+		select 'grant '||privilege||' on '||owner||'.'||table_name||
+		       '('||column_name||') to TEST ;'
+		from   sys.dba_col_privs
+		where  grantee = upper('MERCURY');
+
+		SQL> set head off
+
+		SQL> spool roles_privs.sql
+
+		SQL> select 'grant '||role|| ''||' to MPD;' "ROLES_PRIVILIGES" from session_roles;
+		SQL> select 'grant '||privilege|| ''||' to MPD;' "ROLES_PRIVILIGES" from session_privs;
+		SQL> spool off
+
+		SQL> spool object_privs.sql
+		SQL> select ' grant '||privilege||' on ' ||owner||'.'||table_name||' to ' ||grantee||';' from dba_tab_privs where grantee='MPD';
+
+To kill session in target:
+ 		select 'alter system kill session '''||sid|| ',' ||serial#||''''||' immediate;' from gv$session where username='&MPD';
+
+To check DB LINK => select owner,db_link from dba_db_links where owner='MPD';
+
+To create profile:
+		set long 20000 longchunksize 20000 pagesize 0 linesize 1000 feedback off verify off trimspool on
+		column ddl format a1000
+		set linesize 80 pagesize 14 feedback on verify on
+		select dbms_metadata.get_ddl('PROFILE', profile) as profile_ddl
+		from   (select distinct profile
+		        from   dba_profiles)
+		where  profile like upper('%&1%')
+		/
+		
+Object Dependencies:
+		col schema_name for a15
+		col view_name for a20
+		col referenced_name for a20
+		col REFERENCED_SCHEMA_NAME for a20
+		col REFERENCED_NAME for a25
+		select owner as schema_name,
+		       name as view_name,
+		       referenced_owner as referenced_schema_name,
+		       referenced_name,
+		       referenced_type
+		from sys.dba_dependencies
+		where type = 'VIEW'
+		and owner='&OWNER' and name='&View_Name' order by owner, name, referenced_name, referenced_owner, referenced_type; 
+		
+		col GRANTEE for a25
+		col TABLE_NAME for a25
+		col GRANTOR for a20
+		col PRIVILEGE for a20
+		select TABLE_NAME,GRANTOR,GRANTEE,PRIVILEGE from dba_tab_privs where TABLE_NAME='&TABLE_NAME'; 
+		
+Invalid object:
+		
+		select owner, object_type, status, count(*)
+		from sys.dba_objects
+		where status = ‘INVALID’
+		group by owner, object_type, status
+		order by owner, object_type, status;
+		 
+To disable the constraints :
+
+		sqlplus -s / as sysdba << EOF
+		set heading off feedback off pagesize 0 linesize 150 echo off
+		spool /common/home/oracle/disable_constraint_test.sql
+		select 'alter table "' || owner || '"."' || table_name || '" disable constraint ' || constraint_name || ';' stmt from dba_constraints where r_owner in ('HPM_MAIN', 'HPM_MASTER', 'HPM_SUPPLIER') and constraint_type = 'R' and status = 'ENABLED' order by owner, table_name;
+		spool off
+		set echo on feedback on
+		@/common/home/oracle/disable_constraint_test.sql
+		exit
+		EOF
+		
+		
+		Generate disable script
+		set pages 1000
+		set lines 120
+		set echo off feedback off verify off heading off
+		set termout off
+		spool disble_consts.sql
+		select 'spool disbable_consts.log;' from dual;
+		select 'ALTER TABLE '||tabs.owner||'.'||cons.table_name||' DISABLE CONSTRAINT '||constraint_name||' CASCADE;'
+		from dba_tables tabs, dba_constraints cons
+		where tabs.owner='SCOTT'
+		AND cons.table_name = tabs.table_name;
+		select 'exit;' from dual;
+		spool off
+		@disable_consts.sql;
+		exit
+		/
+		
+		
+		Generate enable script
+		set pages 1000
+		set lines 120
+		set echo off feedback off verify off heading off
+		set termout off
+		spool enable_consts.sql
+		select 'spool enable_consts.log;' from dual;
+		select 'ALTER TABLE '||tabs.owner||'.'||cons.table_name||' ENABLE CONSTRAINT '||constraint_name’;'
+		from dba_tables tabs, dba_constraints cons
+		where tabs.owner='SCOTT'
+		AND cons.table_name = tabs.table_name;
+		select 'exit;' from dual;
+		spool off
+		@enable_consts.sql;
+		exit
+		/
+		
+		SQL> select count(*) from dba_objects;
+		SQL> select count(*) from dba_users;
+		SQL> select count(*) from tab;
+		SQL> select count(*) from dba_indexes;
+		SQL> select count(*) from dba_constraints;
+		
+		
+		
+	
+		
+		
+		
+		
+
