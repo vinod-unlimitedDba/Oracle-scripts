@@ -1,0 +1,42 @@
+
+
+what roles, system privilege, table pri, on which cloumn for the user
+==========================================================================
+
+set line 200 pages 200
+column grantee for a7
+column priv for a25
+column tabnm for a15
+column colnm for a15
+column owner for a7
+set wrap on
+select 'ROLE' typ, grantee grantee, granted_role priv, admin_option ad, '--' tabnm, '--' colnm, '--' owner
+from dba_role_privs
+where grantee='&XNTRG'
+union
+select 'SYSTEM' typ, grantee grantee, privilege priv, admin_option ad, '--' tabnm, '--' colnm,'--' owner
+from dba_sys_privs
+where grantee='&XNTRG'
+union
+select 'TABLE' typ, grantee grantee, privilege priv, grantable ad, table_name tabnm, '--' colnm, owner owner
+from dba_tab_privs
+where grantee='&XNTRG'
+union
+select 'COLUMN' typ, grantee grantee, privilege priv, grantable ad, table_name tabnm, column_name colnm, owner owner
+from dba_col_privs
+where grantee='&XNTRG'
+order by 1;
+
+
+what roles assigned to users
+================================
+select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FROM sys.dba_users usr WHERE usr.created > (SELECT created FROM sys.v_$database));
+
+
+Dynamic scripts to get what privs given for all roles 
+===========================================================
+set long 20000 longchunksize 20000 pagesize 0 linesize 1000 feedback off verify off trimspool on
+
+spool file_name.sql
+select 'grant '||privilege||' on '||owner||'.'||table_name||' to '||grantee||';' from DBA_TAB_PRIVS where grantee in (select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FROM sys.dba_users usr WHERE usr.created > (SELECT created FROM sys.v_$database)));
+spool off
