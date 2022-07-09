@@ -1,6 +1,6 @@
 
 
-what roles, system privilege, table pri, on which cloumn for the user
+what roles, system privilege, table pri, on which cloumn assigned for the user
 ==========================================================================
 
 set line 200 pages 200
