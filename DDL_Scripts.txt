@@ -7,6 +7,25 @@ set trimspool on
 set feed off
 
 
+Tablespace DDL:-
+====================
+select 'select dbms_metadata.get_ddl(''TABLESPACE'','''|| tablespace_name || ''') from dual;' from dba_tablespaces;
+select dbms_metadata.get_ddl('TABLESPACE','&TABLESPACE_NAME') from dual;
+select 'create tablespace ' || df.tablespace_name || chr(10)
+|| ' datafile ''' || df.file_name || ''' size ' || df.bytes
+|| decode(autoextensible,'N',null, chr(10) || ' autoextend on maxsize '
+|| maxbytes)
+|| chr(10)
+|| 'default storage ( initial ' || initial_extent
+|| decode (next_extent, null, null, ' next ' || next_extent )
+|| ' minextents ' || min_extents
+|| ' maxextents ' || decode(max_extents,'2147483645','unlimited',max_extents)
+|| ') ;'
+from dba_data_files df, dba_tablespaces t
+where df.tablespace_name=t.tablespace_name
+/
+
+
 
 Generate DDL of DB_LINK:-
 ==================================
@@ -33,23 +52,6 @@ decode(ORDER_FLAG,'N',' NOORDER','ORDER')||chr(10)||
 ' CACHE '||CACHE_SIZE|| ';'
 from DBA_SEQUENCES where SEQUENCE_OWNER='&OWNER_NAME';
 
-Tablespace DDL:-
-====================
-select 'select dbms_metadata.get_ddl(''TABLESPACE'','''|| tablespace_name || ''') from dual;' from dba_tablespaces;
-select dbms_metadata.get_ddl('TABLESPACE','&TABLESPACE_NAME') from dual;
-select 'create tablespace ' || df.tablespace_name || chr(10)
-|| ' datafile ''' || df.file_name || ''' size ' || df.bytes
-|| decode(autoextensible,'N',null, chr(10) || ' autoextend on maxsize '
-|| maxbytes)
-|| chr(10)
-|| 'default storage ( initial ' || initial_extent
-|| decode (next_extent, null, null, ' next ' || next_extent )
-|| ' minextents ' || min_extents
-|| ' maxextents ' || decode(max_extents,'2147483645','unlimited',max_extents)
-|| ') ;'
-from dba_data_files df, dba_tablespaces t
-where df.tablespace_name=t.tablespace_name
-/
 
 
 Users DDL:-
@@ -197,7 +199,11 @@ from dba_users u
 where u.username = :v_username
 and u.profile <> 'DEFAULT'
 and rownum = 1
-/ set linesize 80 pagesize 14 feedback on trimspool on verify on
+/ 
+
+Other scripts for user DDL and roles,priviege
+======================================================
+set linesize 80 pagesize 14 feedback on trimspool on verify on
 select dbms_metadata.get_ddl('USER', 'KPHU000') || '/' usercreate from dual;
 SELECT DBMS_METADATA.GET_GRANTED_DDL('ROLE_GRANT','KPHU000') || '/' FROM DUAL;
 SELECT DBMS_METADATA.GET_GRANTED_DDL('SYSTEM_GRANT','KPHU000') || '/' FROM DUAL;
