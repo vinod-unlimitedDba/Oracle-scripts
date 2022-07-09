@@ -1,0 +1,17 @@
+what are session in the database
+================================================
+select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
+and status ='ACTIVE' and module is not null;
+
+             RAC
+             =======
+             select username,osuser,sid,serial#, program,sql_hash_value,module from gv$session 
+             where username is not null
+             and status ='ACTIVE' and module is not null;
+
+
+Script to see particular session waits
+===============================================
+select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
+
+
