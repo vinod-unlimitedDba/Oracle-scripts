@@ -15,3 +15,15 @@ Script to see particular session waits
 select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
 
 
+KIlling inactive session at os level
+=====================================
+
+set pagesize 1200;
+set linesize 1200;
+select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr and s.sid in (select sid from v$session where status like 'INACTIVE' and logon_time < sysdate-0.33 and action like 'FRM:%');
+
+       RAC
+       ==========
+        set pagesize 1200;
+        set linesize 1200;
+         select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and              logon_time < sysdate-0.33 and action like 'FRM:%');
