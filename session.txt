@@ -1,4 +1,31 @@
-what are session active in the database
+To list all User Sessions not Background, use following scripts. 
+This script will list you just only User type sessions and their detais.
+============================================================================================
+select * FROM gv$session s, gv$process p
+WHERE s.paddr = p.addr(+)
+and s.TYPE ='USER' and s.username!='SYS';
+
+You can list how many Active and Inactive User sessions are in the Oracle database with following script.
+==================================================================================================
+select count(*) FROM gv$session s, gv$process p
+WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS';
+
+You can list only Active User sessions without sys user with following script
+===========================================================================
+select count(*) FROM gv$session s, gv$process p
+WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE';
+ 
+You can list only Inactive User sessions without sys user with following script
+=====================================================================
+select count(*) FROM gv$session s, gv$process p
+WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='INACTIVE';
+
+You can list all user sessions which are ACTIVE state more than 600 Second with following script.
+===============================================================================================
+select count(*) FROM gv$session s, gv$process p
+WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE' and last_call_et > 600
+
+To check which sessions are active in the database
 ================================================
 select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
 and status ='ACTIVE' and module is not null;
@@ -10,10 +37,9 @@ and status ='ACTIVE' and module is not null;
              and status ='ACTIVE' and module is not null;
 
 
-Script to see particular session waits
+Script to see particular session waitevent
 ===============================================
 select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
-
 
 KIlling inactive session at os level
 =====================================
