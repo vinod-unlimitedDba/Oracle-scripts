@@ -50,6 +50,28 @@ select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr
 
        RAC
        ==========
-        set pagesize 1200;
-        set linesize 1200;
-         select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and              logon_time < sysdate-0.33 and action like 'FRM:%');
+          set pagesize 1200;
+          set linesize 1200;
+          select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and           logon_time < sysdate-0.33 and action like 'FRM:%');
+
+
+Script to how active transaction in the database
+====================================================
+col RBS format a15 trunc
+col SID format 9999
+col USER format a15 trunc
+col COMMAND format a60 trunc
+col status format a8 trunc
+select r.name "RBS", s.sid, s.serial#, s.username "USER", t.status,
+t.cr_get, t.phy_io, t.used_ublk, t.noundo, substr(s.program, 1, 78) "COMMAND" from v$session s, v$transaction t, v$rollname r where t.addr = s.taddr and t.xidusn = r.usn order by t.cr_get, t.phy_io
+/
+
+            RAC
+            ===============
+             col RBS format a15 trunc
+             col SID format 9999
+             col USER format a15 trunc
+             col COMMAND format a60 trunc
+             col status format a8 trunc
+             select r.name "RBS", s.sid, s.serial#, s.username "USER", t.status, t.cr_get, t.phy_io, t.used_ublk, t.noundo, substr(s.program, 1, 78) "COMMAND" from                  gv$session s, gv$transaction t, gv$rollname r where t.addr = s.taddr and t.xidusn = r.usn order by t.cr_get, t.phy_io
+             /
