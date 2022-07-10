@@ -1,0 +1,12 @@
+JDBC Connections to PDBs
+It has already been mentioned that you must connect to a PDB using a service. This means that by default many JDBC connect strings will be broken. Valid JDBC connect strings for Oracle use the following format.
+
+# Syntax
+jdbc:oracle:thin:@[HOST][:PORT]:SID
+jdbc:oracle:thin:@[HOST][:PORT]/SERVICE
+
+# Example
+jdbc:oracle:thin:@ol6-121:1521:pdb1
+jdbc:oracle:thin:@ol6-121:1521/pdb1
+
+
