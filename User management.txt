@@ -1,4 +1,41 @@
 
+User particular info
+========================
+set linesize 2000 verify off
+Set page 1000
+col username  format a15
+col account_status  format a16
+col default_tablespace  format a15
+col temporary_tablespace  format a15
+col profile  format a15
+col initial_rsrc_consumer_group for a23
+SELECT username,account_status,lock_date,expiry_date,default_tablespace,temporary_tablespace,created,profile,initial_rsrc_consumer_group,editions_enabled,
+authentication_type from   dba_users where  username like upper('%&username%') ORDER BY username;
+
+
+2====> SELECT USERNAME, ACCOUNT_STATUS ,CREATED, profile FROM DBA_USERS WHERE USERNAME ='&A';
+
+Show all tablespaces used by a user
+========================================
+select tablespace_name, ceil(sum(bytes) / 1024 / 1024/1024) "GB"
+from dba_extents where owner like '&user_id' group by tablespace_name
+order by tablespace_name
+/
+
+
+GET ALL USERS  NOT DEFAULTS
+==============================
+
+Set lines 500 pages 1000
+Col  username for a35
+SELECT username   FROM dba_users  WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
+
+ SET HEADING OFF
+spool /export/home/oracle/dropuser.sql
+
+    SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS
+       WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
+/
 
 what roles, system privilege, table pri, on which cloumn assigned for the user
 ==========================================================================
