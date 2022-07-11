@@ -15,6 +15,22 @@ authentication_type from   dba_users where  username like upper('%&username%') O
 
 2====> SELECT USERNAME, ACCOUNT_STATUS ,CREATED, profile FROM DBA_USERS WHERE USERNAME ='&A';
 
+
+
+Script for login failed
+==========================
+set pagesize 200
+set linesize 150
+column os_username format a15
+column username format a15
+column userhost format a40
+column timestamp format a20
+column returncode format 9999999999
+
+select os_username, username, userhost, to_char(timestamp,'mm/dd/yyyy hh24:mi:ss') timestamp, action_name, returncode from dba_audit_session
+where action_name = 'LOGON' and returncode  0
+order by timestamp ; 
+
 Show all tablespaces used by a user
 ========================================
 select tablespace_name, ceil(sum(bytes) / 1024 / 1024/1024) "GB"
@@ -42,8 +58,26 @@ spool /export/home/oracle/dropuser.sql
 
 SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS where username not in ('ANONYMOUS','CTXSYS','DBSNMP','DIP','DMSYS','MDSYS','MGMT_VIEW','OLAPSYS','ORACLE_OCM','ORDPLUGINS','ORDSYS','OUTLN','SI_INFORMTN_SCHEMA','EXFSYS','SQLTXADMIN','SQLTXPLAIN','SYS','SYSTEM','TSMSYS','WMSYS','XDB'); 
 
-
-
+User Info along with what roles granted
+====================================
+Set linesize 5000 pagesize 50000
+col username format a23 heading 'Username'             justify c
+col role     format a30 heading 'Role (admin,grant)'   justify c
+col dts      format a12 heading 'Default|Tablespace'   justify c
+col tts      format a12 heading 'Temporary|Tablespace' justify c
+col prof     format a30 heading 'Profile'              justify c
+break on username on role on dts on tts
+select
+  username,
+  default_tablespace    dts,
+  temporary_tablespace  tts,
+  profile        prof,
+  granted_role || '-' ||  decode(admin_option,'YES','Y','N') ||  decode(granted_role,'YES','Y','N') role,ACCOUNT_STATUS
+from  dba_users,  dba_role_privs
+where  dba_users.username = dba_role_privs.grantee 
+and username != 'PUBLIC'
+order by   1,2,3,4
+/
 
 what roles, system privilege, table pri, on which cloumn assigned for the user
 ============================ GOOD ONE ==============================================
@@ -135,3 +169,137 @@ not username in (select distinct grantee from dba_sys_privs) and
 not username in (select distinct grantee from dba_tab_privs) and username like '%&usercheck%'
 group by username
 order by grantee, type, pv;
+
+
+List  locked user in the database 
+=========================
+
+ Get a list of Locked users 
+ 
+ col USERNAME for a20
+set lines 750 pages 1000 
+SELECT username, account_status, lock_date, expiry_date
+  FROM DBA_USERS
+ WHERE account_status <> 'OPEN'
+ORDER BY username;
+
+Set lines750 pages 1000
+Col username for a30
+SELECT 'Administrative User    : ', username, account_status, lock_date, expiry_date
+  FROM dba_users
+ WHERE username in 
+      ('ANONYMOUS', 'CTXSYS',   'DBSNMP', 'EXFSYS', 'LBACSYS',
+       'MDSYS',     'MGMT_VIEW','OLAPSYS','OWBSYS', 'ORDPLUGINS', 
+       'ORDSYS',    'OUTLN',    'SI_INFORMTN_SCHEMA','SYS', 
+       'SYSMAN',    'SYSTEM',   'TSMSYS', 'WK_TEST', 'WKSYS',
+       'WKPROXY',   'WMSYS',    'XDB')
+UNION
+SELECT 'Sample Schema User     : ', username, account_status, lock_date, expiry_date
+  FROM dba_users
+ WHERE username in ('BI','HR','OE','PM','IX','SH')
+union
+SELECT 'Non-Administrative User: ', username, account_status, lock_date, expiry_date
+  FROM dba_users
+ WHERE username in 
+      ('APEX_PUBLIC_USER','DIP',   'FLOWS_30000','FLOWS_FILES','MDDATA',
+       'ORACLE_OCM',      'PUBLIC','SPATIAL_CSW_ADMIN_USER',
+       'SPATIAL_WFS_ADMIN_USR',    'XS$NULL');
+
+
+user and roles
+================
+COL "USER,HIS ROLES AND PRIVILEGES" FORMAT a100
+set linesize 300 pages 1000
+SELECT
+LPAD(' ', 5*level) || granted_role "USER,HIS ROLES AND PRIVILEGES"
+FROM
+(
+  SELECT NULL grantee, username granted_role
+  FROM dba_users
+  WHERE username LIKE UPPER('&USR')
+  UNION
+  SELECT grantee,granted_role
+  FROM dba_role_privs
+  UNION
+  SELECT grantee,privilege
+  FROM dba_sys_privs
+)
+START WITH grantee IS NULL
+CONNECT BY grantee = PRIOR granted_role;   
+ 
+PROMPT Table Privileges granted to a user through roles
+=========================================================
+Set linesize 1000 pagesize 1000
+Col granted_role for a20
+Col owner for a20
+Col table_name for a35
+SELECT granted_role, owner, table_name, privilege 
+FROM ( SELECT granted_role 
+     FROM dba_role_privs WHERE grantee=UPPER('&username')
+       UNION
+       SELECT granted_role 
+     FROM role_role_privs
+     WHERE role in (SELECT granted_role 
+                FROM dba_role_privs WHERE grantee=UPPER('&username')
+               )
+    ) roles, dba_tab_privs
+WHERE granted_role=grantee;
+
+PROMPT System Privileges assigned to a user through roles
+==================================================================
+SELECT granted_role, privilege
+FROM ( SELECT granted_role 
+     FROM dba_role_privs WHERE grantee=UPPER('&username')
+       UNION
+       SELECT granted_role 
+     FROM role_role_privs
+     WHERE role in (SELECT granted_role 
+                FROM dba_role_privs WHERE grantee=UPPER('&username')
+               )
+    ) roles, dba_sys_privs
+WHERE granted_role=grantee;
+
+
+List of privilege
+==============
+	select
+  lpad(' ', 2*level) || granted_role "User, his roles and privileges"
+from
+  (
+  /* THE USERS */
+    select 
+      null     grantee, 
+      username granted_role
+    from 
+      dba_users
+    where
+      username like upper('%&enter_username%')
+  /* THE ROLES TO ROLES RELATIONS */ 
+  union
+    select 
+      grantee,
+      granted_role
+    from
+      dba_role_privs
+  /* THE ROLES TO PRIVILEGE RELATIONS */ 
+  union
+    select
+      grantee,
+      privilege
+    from
+      dba_sys_privs
+  )
+start with grantee is null
+connect by grantee = prior granted_role;
+
+
+
+
+
+
+
+
+
+
+
+
