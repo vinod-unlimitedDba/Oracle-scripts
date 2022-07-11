@@ -1,0 +1,897 @@
+
+Basic
+====
+
+ Hardware  ================    # dmidecode
+							   # dmidecode | grep Serial ========== to see hardware details
+							   dmidecode | grep -i vmware === to find machine is physical or VM
+								lspci
+								lsusb
+								lshal
+
+find the release ====  cat /etc/*-release
+                       cat /etc/enterprise-release
+					   cat /etc/redhat-release
+					   lsb_release -a 
+					   cat /proc/version
+                        
+OS version =========
+						/usr/bin/uname -s -r
+						cat /proc/version
+						cat /etc/issue
+
+get soft link info ===== ls -la | awk -F" " '{print $9 $10 $11;}'
+ 
+page size       ==== getconf PAGE_SIZE
+                     /usr/bin/getconf -a| egrep -i 'pagesize|page_size'
+
+Get kernel
+information   ========= du -b filename
+						On linux
+						$uname -a
+						Linux debian 2.6.18-4-686 #1 SMP Wed May 9 23:03:12 UTC 2007 i686 GNU/Linux
+						On Solaris
+						isainfo -b -v
+						/usr/bin/isainfo -kv
+						On AIX
+						$ getconf -a | grep KERN
+						$ file /usr/lib/boot/unix*
+						On HP-UX
+						/usr/bin/ getconf KERNEL_BITS
+						/usr/bin/file /stand/vmunix
+
+
+
+					 
+History commands ========   export HISTSIZE=100000
+							export HISTFILESIZE=409600
+							export HISTCONTROL=ignoredups
+
+ls commands
+
+ls -al | pg do a full directory listing and prompt to stop stuff whizzing off the page.
+ls | wc -l count the files in the current directory.
+ls -alt list files in date order
+ls -alt | head -10 as above but only display the first 10
+ls -l $ORACLE_HOME/reports60/printer/admin/spoolcmd.sh Verify that the spoolcmd.sh file has execute permissions
+ls -s | awk '{if ($1 > 50) print $1 " " $2 }' list all files over 50 blocks in size.
+ls -alq List files with hidden characters. Very useful when you cannot delete a file for an unknown reason, as sometimes a file can be created with hidden control characters. (very common when stty not set properly)
+ls -1 Shows the files in a list (just the file names, this option is useful in shell scripts where the files names need to be fed into another program or command for manipulation)
+ls -1h The option "-h" comes handy to display the size of the files in a human readable form.
+ls -lr The parameter -r shows the output in the reverse order
+ls -lR The -R operator makes the ls command execute recursively—that is, go under to the subdirectories and show those files too
+
+
+
+sync; echo 1 > /proc/sys/vm/drop_caches  ============= Flush cahche
+
+
+
+find command
+=============
+find . -exec chown oracle {} \; -print ===== following example changes the ownership on every single file in current directory
+find /u01/app/oracle/admin/WMEDCRPT1/adump -name '*.aud' -mtime +3 -exec rm -f {} \;
+
+Files & directories
+===================================
+List TOP 10 by size directories ====== du -m --max-depth 1 | sort -rn | head -11
+                                        du -S . | sort -nr | head -10
+
+occupied space  directory or sub-directory === du -gs * | sort -n| tail 
+                                   
+								               du -a . | sort -nr | head
+											   du -h -s -x * | sort -g -b -r | less -F
+
+the biggest size directory and files ==== du -k * | sort -nr | cut -f2 | xargs -d '\n' du -sh |more
+
+Disk use in current location (GOOD ONE)  =======  du -a --max-depth=1 | sort -n | cut -d/ -f2 | sed '$d' | while read i; do if [ -f $i ]; then du -h "$i"; else echo "$(du -h --max-depth=0 "$i")/"; fi; done
+
+script to show directories in path and one line  === echo src::${PATH} | awk 'BEGIN{pwd=ENVIRON["PWD"];RS=":";FS="\n"}!$1{$1=pwd}$1!~/^\//{$1=pwd"/"$1}{print $1}'
+
+To check top high memeory used
+======================
+Checking Swap Space Size and Usage ========== ps -eo vsz,ruser,pid,args | sort -rn | head -10 
+
+Displays the top 20 CPU users on the system ======  ps -e -o pcpu -o pid -o user -o args | sort -k 1 | tail -21r
+
+ To report CPU pervious day =====  sar -u 10 8 
+		
+			The sar command reports CPU Utilization (on this case 10 seconds apart; 8 times): Nice column is the priority of that process, bigger numbers less priority
+			Time	%usr	%sys	%wio	%idle
+			11:57:31	72	28	0	0
+			11:57:41	70	30	0	0
+			11:57:51	70	30	0	0
+
+			%usr: Percent of CPU in user mode
+			%sys: Percent of CPU in system mode
+			%wio: Percent of CPU running idle with a process waiting for block I/O
+			%idle: Percent of CPU that is idle
+			If the %idle is near zero, your CPU is overloaded. If the %iowait is large, your disks are overloaded.
+ 
+
+ Physical CPU’s
+ ==============
+ Physical CPU =======  grep -i "physical id" /proc/cpuinfo | sort -u | wc -l
+                       dmidecode -t processor |grep CPU
+                       egrep -e "core id" -e ^physical /proc/cpuinfo|xargs -l2 echo|sort -u
+ 
+ no of CPU in solaris ==== psrinfo -v | grep “Status of processor”|wc -l
+ 
+ no of cpu in AIX ======= lsdev -C | grep Process|wc -l
+ 
+ Logical CPU =============  grep -i "processor" /proc/cpuinfo | sort -u | wc -l
+
+To find the no. of CPU’s   in a db:
+SQL > Show parameter cpu        (or)
+$ cat /proc/cpuinfo                             (see the processors)    (or)
+$ cat /proc/cpuinfo | grep "processor"|wc -l              (LINUX)  (or)   lscpu
+$ ioscan -C processor | grep processor | wc -l          (HP-UX)
+$ psrinfo -v|grep "Status of processor"|wc -l           (SOLARIS)
+$ lsdev -C|grep Process|wc -l     
+
+
+Memory 
+======
+ memory info =====cat /proc/meminfo 
+                  cat /proc/slabinfo
+In solaris  ======= prtconf |grep -i mem 
+
+In AIX ========= lsdev -C |grep mem 
+
+The –t options shows you the totals at the end of the output (adds physical memory plus swap memory):
+# free -m -t
+total used free shared buffers cached
+Mem: 1772 1644 127 0 16 613
+-/+ buffers/cache: 1014 757
+Swap: 1983 1065 918
+Total: 3756 2709 1046
+
+Some tips
+Shows the percentage of used memory:
+# free -m | grep Mem | awk '{print ($3 / $2)*100}' 
+98.7077
+
+Shows the percentage of swap memory:
+free -m | grep -i Swap | awk '{print ($3 / $2)*100}'
+
+Checking Swap Space Size and Usage
+=================================
+step 1
+         grep SwapTotal ====/proc/meminfo
+step 2
+	  vmstat 3 100
+	  The fields si and so show the amount of memory paged in from disk and paged out to disk, respectively
+step 3
+		ls -al /var/log/sa | grep "Oct 12"
+		sar -W -f /var/log/sa/sa12
+		The fields pswpin and pswpout show the total number of pages brought in and out per second, respectively.
+
+		alternative example for yesterday
+		sar -f /var/log/sa/sa$(date +%d -d yesterday)
+
+		solutions
+		Adding more RAM.
+		Reducing the size of the SGA.
+		Increasing the size of the swap space
+
+Operating System: AIX 5L Based Systems (64-Bit)
+Physical RAM: # /usr/sbin/lsattr -E -l sys0 -a realmem
+Swap Space: # /usr/sbin/lsps -a
+
+Operating System: HP Tru64 UNIX
+PPhysical RAM: # /bin/vmstat -P grep "Total Physical Memory"
+Swap Space: # /sbin/swapon -s
+
+Operating System: HP-UX Itanium
+Physical RAM: # /usr/contrib/bin/machinfo grep -i Memory
+Swap Space: # /usr/sbin/swapinfo -a
+
+Operating System: HP-UX PA-RISC (64-Bit)
+Physical RAM: # grep "Physical:" /var/adm/syslog/syslog.log
+Swap Space: # /usr/sbin/swapinfo -a
+
+Operating System: IBM zSeries Based Linux, LinuxItanium/POWER/x86/x86-64
+Physical RAM: # grep MemTotal /proc/meminfo
+Swap Space: # grep SwapTotal /proc/meminfo
+
+Operating System: Solaris SPARC 64-Bit/x86/x86-64
+Physical RAM: # /usr/sbin/prtconf grep "Memory size"
+Swap Space: # /usr/sbin/swap -s 
+
+
+
+sar command 
+=======================
+# process per second
+sar -c 2 10 -- for all CPUs without interval, since last reboot
+sar -c –P 0 -- for first CPU
+
+sar -u 4 5  ==== CPU% utilization
+sar –r ==== for swap in and out 
+sar -W ==== for swap in and out 
+sar -B 2 50 -- every 2 seconds for 50 times ==== virtual memory
+
+# sar -q 2 5 ========== Run Queue size of the server
+
+# sar -p 2 5 ================== Paging activity of the server
+
+# sar -w 2 5 ================ Swapping activity of the server
+
+/# rtps wtps read/write requests per second issued to the physical disk
+# bread/s bwrtn/s data read/write from the drive in blocks per second
+sar –b 5 10
+# bloc device usage
+# number of sectors (512 byte) read/written per second
+# if avque is greater larger than 1, disk contention is there
+sar -d
+
+VMSTAT command
+====================
+vmstat -s | grep "cpu ticks" === cpu 
+
+vmstat -s -S M | grep "pages"
+
+vmstat -s | grep "pages paged" -- Page ins and page outs
+
+vmstat –s -S M | grep "swap"
+
+vmstat -S M -- Active and inactive pages
+
+vmstat -d | grep d =====  reports disk statistics
+
+IOSTAT COMMAND
+================
+iostat –c               === cpu 
+iostat 4 5 –c -- 5 times every 4 seconds
+
+# tps: transfer per second
+iostat –d
+iostat 4 5 –d -- 5 times every 4 seconds
+iostat -d –k -- display output in kilobytes instead of blocks
+iostat -d –x -- extended report
+
+/* Network Statistics */ 
+iostat –c
+iostat 4 5 –c -- 5 times every 4 seconds
+
+$ ac  -d      ============= To know how many hours I was connected to the server till today                
+
+$ ac  -p  ================ To know connect time for all the users
+
+$ ac  -d  basupally ======= To know the connect time for a specific user (ex: basupally)
+
+
+Port to check opened or not
+=================
+
+netstat -ntl|grep 1521
+
+
+To find the top CPU and Memory consuming process:
+===========================================
+ps -ef | awk '{t=t+$7 - $10 ;print $7 - $10,$1,$11,$12,$13}END{printt}' | sort -rn | pg
+ps -ef|sort +5|tail  ==> high CPU session
+ps augxww|egrep "RSS| "|head ==> Avg cpu session
+ps -eaf -o pcpu,pid,user,tty,comm | grep ora | grep -v \/sh | grep -v ora_ | sort -r | head -20  ==> high CPU session
+or 
+ps –eo pcpu,pid,comm,args | sort –n | tail -20  ---> high cpu sessions
+
+ps gv | head -n 1; ps gv | egrep -v "RSS" | sort +6b -7 -n -r --> memory RSS column is memory
+
+
+Cpu issue
+===============
+
+ps -e -o pcpu,pid,user,tty,args | grep -i oracle | sort -n -k 1 -r | head
+
+ps -e -o pcpu,pid,user,tty,args | sort -n -k 1 -r | head
+
+top -U oracle -d 5 -n 25
+
+Memory
+===============
+
+ps -e -o pmem,pid,user,tty,args | grep -i oracle | sort -n -k 1 -r | head
+
+
+sysctl -a |egrep "shmmax|shmall|shmmni|sem|file-max|ip_local_port_range|rmem|wmem"
+
+NFS enhancement 
+=====================
+If NFS is not currently setup do the following:
+Application Manager -> System Admin -> Configuration -> NFS
+Select the "Configure system as an NFS client" option.
+Accept all defaults.
+Create mount point directory:
+mkdir /backup
+Append an following entry to the "/etc/fstab" file:
+nfs-server-name:/u04/backup     /backup         nfs rw,bg,intr 0 0
+Finally, mount the fileset:
+mount /backup
+At this point you can start to use the mount point from your client machine. Thanks to Bryan Mills for his help with Tru64.
+
+
+ 
+SOLARIS Handy Commands
+================
+		get kernel parameters ==== grep shm /etc/system
+
+		get Memory ======  prtconf | head -3 |grep Mem
+
+		get HW ======= uname -X
+
+		Display number of CPU’s ====== psrinfo -v|grep "Status of processor"|wc -l
+		
+		RAM Size in Solaris ======  prtconf|grep -i mem
+        
+		get swap details ====== swap -l
+ 
+		 To memory on Sun:
+		------------------
+		ps -ef | grep $PROG | grep -v 'sh -c' | grep $pid > /dev/null
+
+		ps -eo vsz,pid,args | sort +0n -1 | tail -20
+
+		prstat -s size -n 5 ==> to see memory
+
+		ps aux|sort -nr +4 -5|pg   ==> top process eating the memory
+		OR
+		ps axwv | awk '{t=t+$7 - $10 ;print $7 - $10,$1,$11,$12,$13}END{print t}' | sort -rn | pg
+
+		prstat -t ===> to see cumulative of memery and cpu
+		prstat -a 
+
+		svmon -G ==> AIX over all memory info
+		svmon -P | grep -p 15256 ==> for a given process
+
+ sysinfo
+vmstat
+/usr/sbin/prtconf
+for general information + memory
+/usr/sbin/psrinfo -v for CPU info
+sar -d
+iostat
+/opt/RICHPse/bin/se
+/opt/RICHPse/examples/toptool.se
+sar -u
+/usr/bin/mpstat
+/opt/RICHPse/bin/se
+/opt/RICHPse/examples/toptool.se
+top
+/etc/swap -l
+ 
+ 
+ 
+ Advance commands
+ ===========
+ sed commands
+ ================
+ 
+	  sed -n 12,18p file.txt ====== display only lines 12-18 of file.txt
+	  
+	  sed '$d' file.txt =========== delete last line 
+	  
+	  sed '17,/disk/d' file.txt ========= Delete all lines from line 17 to 'disk'
+	  
+	  sed '/./,$!d' file.txt ========== Delete all leading blank lines
+	  
+	  sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba' \ file.txt === Delete all trailing blank lines
+	  
+	  sed '/^Subject: */!d; s///;q'  ============ get mail subject
+	  
+	  sed 's/^[ ^t]*//;s/[ ^]*$//' file.txt === Delete all spaces in front and at the end of every line
+	  
+	  sed -e 's/#.*//;/^$/d' testfile.txt === to remove all commentted & empty file
+	  
+	  sed -e 's/#.*//' testfile.txt  === just to remove commented lines
+	 
+	  sed 's/\([^:]*\).*/\1/' /etc/passwd  ====  list all user name in /etc/passwd
+	 
+grep commands
+
+grep -c '^$' filename ===== count of empty line in file
+grep '^END$' filename ===== display only the word end by itself
+grep '[0-9][0-9][0-9]' ==== displa all lines which contain 3 adject digigts
+grep '.' lis.txt ==== display all non-blank lines	 
+
+awk command
+====== 
+To search for a pattern in awr you can use various meta characters. The list of meta characters along with their meaning is given below.
+
+1). (Dot): Match any character
+2)* : Match zero or more character
+3)^ : Match beginning of line
+4)$ : Match end of line
+5)\ : Escape character following
+6)[ ] : Match any of the list of characters
+7){ } : Match range of instance
+8)+ : Match one more preceding
+9)? : Match zero or one preceding
+10)| : Separate choices to match
+
+Predefined variables in awk
+1)FILENAME : Name of current input file
+2)RS : Input record separator character (Default is new line)
+3)OFS : Output field separator string (Blank is default)
+4)ORS : Output record separator string (Default is new line)
+5)NF : Number of input record
+6)NR : Number of fields in input record
+7)OFMT : Output format of number
+8)FS : Field separator character (Blank & tab is default)
+
+'{ printf  "%10s\n", $1 }' === space will add space.
+
+
+Translate or replace characters using tr utility
+With tr command you can translate letter from uppercase to lowercase and vice-versa. In other word, with tr command you can replace a letter by another letter.
+
+The syntax for using tr command is,
+tr {source_pattern} {destination_pattern}
+
+Each letter in source_pattern is replaced by corresponding letter in destination_pattern.
+
+For example if you write
+
+tr "a6" "7y"
+
+then from the string or file every "a" will be replaced by "7",
+and every "6" will be replaced by "y".
+
+
+# tr "a-z" "A-Z" <> names_capital.txt
+
+The "diff" command displays the differences between file1 and file2. Options:
+diff README.txt README2.txt 
+-t = ignore white spaces and tabs
+-i = ignore 'case' letters (A=a)
+Another option, -y, shows the same output, but side by side:
+diff -y file1 file2 -W 120
+
+Check Services Running and stop them if not used
+Services that should be removed: r* (shell or rsh, login or rlogin, exec or rexec, rcp), telnet, ftp, sendmail, exim, postfix, printer, qmail, http, portmap, SMBD (Samba)
+chkconfig --list --> Show services running and its level
+chkconfig --del servicename --> Stop that service
+chkconfig --level 345 servicename off --> Stop that service for level 3,4,5
+
+ssh command
+
+The "ssh" command lets you connect to a remote box. 
+The "scp" command lets you perform remote copy operations
+Run command on $HOST as $USER (default command=shell)
+ssh $USER@$HOST command 
+Run GUI command on $HOSTNAME as $USER
+ssh -f -Y $USER@$HOSTNAME xeyes 
+Copy with permissions to $USER's home directory on $HOST
+scp -p -r $USER@$HOST: file dir/ 
+Forward connections to $HOSTNAME:8080 out to $HOST:80
+ssh -g -L 8080:localhost:80 root@$HOST 
+Forward connections from $HOST:1434 in to imap:143
+ssh -R 1434:imap:143 root@$HOST 
+
+$ for i in `cat nodes`; do scp -rq /home/hadoop/jdk1.6.0_24 hadoop@$i:/home/hadoop/; done;
+
+Also it could be necessary to check the file /etc/inetd.conf because it has references to some services, 
+if any service that I want to stop is there, comment that line and reboot the server or run:
+/etc/init.d/inetd restart
+
+
+getopts command in linux shell script
+The getopts command in shell script is used to check the valid command line arguments passed into script.
+ The syntax of using getopts inside shell script is,
+
+getopts {optsring} {variable_name}
+
+From the manual page,
+"optstring contains the option letters to be recognized; if a letter is followed by a colon, the option is expected to have an argument, which should be separated from it by white space. Each time it is invoked, getopts places the next option in the shell variable variable_name, When an option requires an argument, getopts places that argument into the variable OPTARG. On errors getopts diagnostic messages are printed when illegal options or missing option arguments are encountered. If an illegal option is seen, getopts places ? into variable_name."
+
+For example you have a shell script named student_info that would be run by,
+./student_info -i 024434 -a 23 -d CIT -s male
+where student_info is the shell script name
+-i is used for the student id.
+-a is used for age.
+-d is used for department.
+-s is used for sex.
+
+Now if you see user is giving wrong argument rather than these, then you can show user about the script usage information.
+
+Let's look at the code.
+
+
+# vi getopts.sh
+{
+echo "Usage Syntax: $0 -i -a -d -s"
+echo "-i Student ID"
+echo "-a Age"
+echo "-d Department"
+echo "-s Sex"
+exit 1
+}
+if [ $# -lt 1 ]
+then
+help_menu
+fi
+while getopts i:a:d:s: option
+do
+case "$option" in
+  i) id="$OPTARG";;
+  a) age="$OPTARG";;
+  s) sex="$OPTARG";;
+  d) dept="$OPTARG";;
+  \?) help_menu
+esac
+done
+echo "Student ID: $id ,Age: $age ,Sex: $sex ,Department: $dept "
+
+
+# chmod +x getopts.sh
+
+
+If you run getopts.sh without any argument then it will display the usage syntax.
+# ./getopts.sh
+Usage Syntax: ./getopts.sh -i -a -d -s
+-i Student ID
+-a Age
+-d Department
+-s Sex
+
+If you give correct arguments then it will display as below.
+# ./getopts.sh -i 024434 -a 23 -s male -d CIT
+Student ID: 024434 ,Age: 23 ,Sex: male ,Department: CIT
+Labels: UNIX
+	 
+PROFILE settings
+=================
+
+		Useful Profile Settings
+		The following .profile settings rely on the default shell for the user being set to the Korn shell (/bin/ksh).
+
+		The backspace key can be configured by adding the following entry:
+		stty erase "^H"
+		The command line history can be accessed using the [Esc][k] by adding the following entry:
+		set -o vi
+		Auto completion of paths using a double strike of the [Esc] key can be configured by adding the following entry:
+		set filec
+
+ 
+Useful Files :
+================
+Here are some files that may be of use:
+/etc/passwd	User settings
+/etc/group	Group settings for users.
+/etc/hosts	Hostname lookup information.
+/etc/system	Kernel parameters for Solaris.
+/etc/sysconfigtab	Kernel parameters for Tru64.
+ 
+ 
+ CRONJOBS commands
+===============
+
+
+		Cron is a unix utility that allows tasks to be automatically run in the background at regular intervals by the cron daemon often termed as cron jobs.
+		Crontab (CRON TABLE) is a file which contains the schedule of cron entries to be run and at specified times, you can invoke it with the "crontab -e" command.
+
+		syntax
+		A crontab file has five fields for specifying day , date and time followed by the command to be run at that interval. You can also specify a range of values.
+
+		* * * * * command to be executed
+		- - - - -
+		| | | | |
+		| | | | +-----> day of week (1 - 7) (monday = 1)
+		| | | +-----------> month (1 - 12)
+		| | +-----------------> day of month (1 - 31)
+		| +-----------------------> hour (0 - 23)
+		+-----------------------------> min (0 - 59)
+
+		The first 5 fields can be specified using the following rules:
+		*       - All available values or "first-last".
+		3-4     - A single range representing each possible from the start to the end of the range inclusive.
+		1,2,5,6 - A specific list of values.
+		1-3,5-8 - A specific list of ranges.
+		0-23/2  - Every other value in the specified range.
+		Examples
+		The following entry runs a cleanup script a 01:00 each Sunday. Any output or errors from the script are piped to /dev/null to prevent a buildup of mails to root:
+		0 1 * * 0 /u01/app/oracle/dba/weekly_cleanup > /dev/null 2>&1
+
+		# Execute the file save.sh every day at 0.05 and send results to a log file:
+		5 0 * * * /home/oracle/save.sh.sh 1>>/home/oracle/log 2>&1 
+
+		# Execute at 2:15pm the first day of each month and do not send the results:
+		15 14 1 * * /home/oracle/mensual.sh 1>/dev/null 2>&1 
+
+		# Execute from Monday to Friday at 10PM
+		0 22 * * 1-5 shutdown -h now 1>/dev/null 2>&1 
+
+		# Execute every minute
+		* * * * * /home/oracle/espia.sh
+			
+		Cluster Wide CRON Jobs On Tru64
+		On clustered systems cron is node-specific. If you need a job to fire once per cluster, rather than once per node you need an alternative approach to the standard cron job. One approach is put forward in the HP best practices document (Using cron in a TruCluster Server Cluster), but in my opinion a more elegant solution is proposed by Jason Orendorf of HP Tru64 Unix Enterprise Team (TruCluster Clustercron).
+
+		In his solution Jason creates a file called /bin/cronrun with the following contents:
+		#!/bin/ksh
+		set -- $(/usr/sbin/cfsmgr -F raw /)
+		shift 12
+		[[ "$1" = "$(/bin/hostname -s)" ]] && exit 0
+		exit 1
+		This script returns TRUE (0) only on the node which is the CFS serving cluster_root.
+
+		All cluster wide jobs should have a crontab entry on each node of the cluster like:
+		5 * * * /bin/cronrun && /usr/local/bin/myjob
+		Although the cron jobs fire on all nodes, the "/bin/cronrun &&" part of the entry prevents the script from running on all nodes except the current CFS serving cluster_root.	
+		 
+ Extra tips & Tricks
+ ===================
+ 
+		CRON and & Command
+		Jobs in background
+		cp * /tmp &  ===== run job in background
+		nohup cp * /tmp &  ====  To avoid termination of BG job
+
+		 Automatic Startup Scripts on Linux
+		 ===================================
+		Create a file in the /etc/init.d/ directory, in this case the file is called myservice, containing the commands you wish to run at startup and/or shutdown.
+
+		Use the chmod command to set the privileges to 750:
+		chmod 750 /etc/init.d/myservice
+		Link the file into the appropriate run-level script directories:
+		ln -s /etc/init.d/myservice /etc/rc0.d/K10myservice
+		ln -s /etc/init.d/myservice /etc/rc3.d/S99myservice
+		Associate the myservice service with the appropriate run levels:
+		chkconfig --level 345 dbora on
+		The script should now be automatically run at startup and shutdown (with "start" or "stop" as a commandline parameter) like other service initialization scripts.
+
+ 
+Oracle os commands
+
+Changing the standard prompt for Oracle Users
+
+		PS1=”`hostname`*$ORACLE_SID:$PWD>”  ============= Edit the .profile for the oracle user
+
+		nohup sqlplus / as sysdba @/tmp/vkotapati/XPKPER_ARTICLE_INDEX_MAP_COPY.sql & ==== to run BG
+
+		netstat -anp | grep 9020   ====== Check port is listening or not.
+
+		ps -ef|grep DBNAME |grep LOCAL=NO |wc -l ==== count of no of process of DB
+
+		select oscomm('/bin/ls -ltr') from dual;  ===== to run os command frm sql
+
+JDBC connection strings :
+===========================
+
+				 jdbc:oracle:thin:@(DESCRIPTION=(LOAD_BALANCE=off)(FAILOVER=on)(CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb01p.cengage.info)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb02p.cengage.info)(PORT=1526)))(CONNECT_DATA=(SERVICE_NAME=esbmapd_prim)))
+				 
+				 jdbc:oracle:thin:@(DESCRIPTION = (FAILOVER=on)
+					 (CONNECT_TIMEOUT=15) (RETRY_COUNT=20) (RETRY_DELAY=3)
+					   (ADDRESS_LIST =
+						   (LOAD_BALANCE=on)
+						   (ADDRESS = (PROTOCOL = TCP) (HOST=ohcinxesbdb01p.cengage.info) (PORT=1526)))
+					  (ADDRESS_LIST =
+							 (LOAD_BALANCE=on)
+							 (ADDRESS = (PROTOCOL = TCP) (HOST=ohcinxesbdb02p.cengage.info) (PORT=1526))) 
+					  (CONNECT_DATA= (SERVICE_NAME = esbmapd_prim)))
+
+
+trimming logs file on date/lines
+================
+sed -n '/Feb 17 / , /Feb 17/p' < alert-groradd1-021719.log > 4days_trimmed.txt
+
+-- get alert.log file for particular day
+       -----------------------------
+awk '/Jun 26/{c=6}c&&c --' alert_demo.log
+grep -B1 -A1 'Jun 26' alert_demo.log
+sed -n '100,110 p' orig-data-file > new-file
+
+awk 'NR>=100&&NR<=110' orig-data-file > new-file
+
+perl -ne 'print if 110..110' orin-data-file > new_file
+
+-- get alert.log file for particular day
+awk '/Jun 26/{c=6}c&&c --' alert_demo.log
+
+Check all logs for ORA- errors
+----------------------------------
+
+grep ^ORA- *log |cut -f2 -d"-"|cut -f1 -d:|awk '{print "ORA-" $1}'|sort -u
+
+egrep -i "ORA-01652|ORA-1652" alert_${ORACLE_SID}.log|sort -u
+grep  -i  alter               alert_${ORACLE_SID}.log|sort -u
+
+
+        script
+		==========
+		#/bin/ksh
+		# count # of processes for each database
+		for i in ` pgrep -fl smon|awk -F_ '{print $3}'`
+		do
+		echo "database name : " $i
+		ps -ef|grep $i|grep LOCAL=NO |wc -l
+		done
+		
+		
+		How to find mapping of ASM disks to Physical Devices?
+
+1.Login as oracle and list ASM diskgroups
+
+		$ oracleasm listdisks === list disks
+	    $ oracleasm querydisk -d DATA1 ====  Query Disk
+               Disk "DATA1" is a valid ASM disk on device [8, 33]
+        # ls -l /dev |grep 8|grep 33
+		
+Cluster  commands 
+=============
+
+crsctl stat res -t | grep -i offline
+
+ oifcfg iflist –p -n ===== To determine the list of interfaces available to the cluster:
+ oifcfg getif ====== To determine the public and private interfaces that have been configured:
+ 
+ to check contents olr ======strings /u01/app/grid/11.2.0.3/product/grid_1/cdata/rac1/backup_20140316_012027.olr |grep -v type |grep ora!
+ocr ======= strings /u01/app/grid/product/11.2.0.3/grid_1/cdata/cluster01/backup_20140118_010340.ocr| grep -v type |grep ora!
+
+olsnodes commands
+========
+olsnodes 
+olsnodes -i ===display VIP
+olsnodes -n ===node name and number
+olsnodes -a == role of the number
+olsnodes -s === status of the nodes
+olsnodes -c === name of the cluster 
+olsnodes -t === pinned or unpinned
+olsnodes -p === private ip
+olsnodes -v -g ===
+
+Check version of ASMCMD
+
+
+$asmcmd -V -- Check ASM version
+		asmcmd version 18.0.0.0.0
+
+ASMCMD [+] > showversion --active -- Check patch version
+ASMCMD [+] > lsattr -lm -G data  --Check the attribute of data diskgroup 
+				-l display name with value
+				-m add additiona value
+
+General ASMCMD commands
+
+
+ASMCMD> ls --List the directory 
+data/
+fra/
+
+ASMCMD> mkdir +data/orcl/mydir --Make the directory
+
+ASMCMD [+] > cd data/orcl --Change directory
+ASMCMD [+data/orcl] >
+
+ASMCMD [+] > lsdg data --Lists mounted disk groups and their information
+ASMCMD [+] > lsdsk -t -G data -- List oracle ASM disk 
+
+
+Configure and Manage the ASM instance with ASMCA
+
+-- Create the ASM instance
+asmca -silent
+-configureASM
+-diskString '/devices/disk*'
+–sysAsmPassword my_sysasm_password
+-asmsnmpPassword my_asmsnmp_passwd
+
+-- configure the parameter of ASM instance
+asmca -silent
+-configureParameter
+–param
+asm_power_limit=3
+–sysAsmPassword my_sysasm_password
+
+--Delete the ASM instance
+asmca -silent
+-deleteASM
+–sysAsmPassword my_sysasm_password
+-force
+
+List the operation going on disk
+displays information from the V$ASM_OPERATION view
+
+ASMCMD [+] > lsop
+Group_Name Dsk_Num State Power
+DATA REBAL WAIT 2
+
+Manage the Diskgroup and disk with ASMCA
+
+-- Create the diskgroup
+asmca -silent -createDiskGroup
+-diskGroupName mynewdg
+-disk '/devices/diske*'
+-disk '/devices/diskk*'
+-redundancy NORMAL
+-au_size 64
+-compatible.asm '18.0.0.0.0'
+-compatible.rdbms '18.0.0.0.0'
+-compatible.advm '18.0.0.0.0
+
+-- Add disk to diskGroup
+asmca -silent
+-addDisk
+-diskGroupName mynewdg
+-disk '/devices/diskl1'
+-disk '/devices/diskl2'
+
+-- Edit the diskgroup attribute
+asmca -silent
+-editDiskGroupAttributes
+(-diskGroupName disk_group)
+(-attribute value)
+
+--Check ASM Disk Attribute
+ASMCMD +> lsattr
+
+--Set the ASM Attribute
+ASMCMD +>setattr
+
+-- Create the diskgroup
+Creates a disk group based on an XML configuration file.
+ASMCMD +> MKDG
+
+--Drop the diskGroup
+ASMCMD [+] > dropdg -r -f dat
+-f force option
+-r recursive like linux
+
+-- For altering the disk group
+ASMCMD +> chdg
+
+--Rename the disk-group
+renamedg dgname=fra1 newdgname=fra2 asm_diskstring='/devices/disk*' verbose=true
+
+Handle file group or Quota group
+ASMCA also supports commands to manage and track file and quota groups. These commands include:
+
+
+--modify a file group or quota group
+chfg and chqg
+
+--list file groups or quota groups
+lsfg and lsqg
+
+--create a file group or quota group
+mkfg and mkqg
+
+-- Delete a file group or quota group
+rmfg and rmqg
+
+--to move a file group
+mvfg
+
+Managing the ADVM Volume
+
+-- Create volume in DATA diskgroup
+ASMCMD [+] > volcreate -G data -s 10G --width 1M --column 8 volume1
+
+-- Check the list of volume
+ASMCMD [+] > volinfo -G data volume1
+
+-- List all volume in specific disk -a option
+ASMCMD [+] > volinfo -G data -a
+
+-- Delete the Volume
+ASMCMD [+] > voldelete -G diskgroup volume
+
+-- Disable the volume
+ASMCMD [+] > voldisable -G diskgroup volume
+
+-- Enable the volume
+ASMCMD [+] > volenable -G diskgroup volume
+
+--Resize operation on volume
+ASMCMD [+] > volresize -G data -s 20G volume1
+
+
+
+
+Aix commands
+
+
+oslevel -r  === release number
+
+lslpp -l bos.64bit === to check 64 bit or not
+
