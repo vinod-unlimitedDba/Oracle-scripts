@@ -3,8 +3,8 @@ Basic
 ====
 
  Hardware  ================    # dmidecode
-							   # dmidecode | grep Serial ========== to see hardware details
-							   dmidecode | grep -i vmware === to find machine is physical or VM
+			       # dmidecode | grep Serial ========== to see hardware details
+			       # dmidecode | grep -i vmware === to find machine is physical or VM
 								lspci
 								lsusb
 								lshal
@@ -27,25 +27,25 @@ page size       ==== getconf PAGE_SIZE
 
 Get kernel
 information   ========= du -b filename
-						On linux
-						$uname -a
-						Linux debian 2.6.18-4-686 #1 SMP Wed May 9 23:03:12 UTC 2007 i686 GNU/Linux
-						On Solaris
-						isainfo -b -v
-						/usr/bin/isainfo -kv
-						On AIX
-						$ getconf -a | grep KERN
-						$ file /usr/lib/boot/unix*
-						On HP-UX
-						/usr/bin/ getconf KERNEL_BITS
-						/usr/bin/file /stand/vmunix
+			On linux
+			$uname -a
+			Linux debian 2.6.18-4-686 #1 SMP Wed May 9 23:03:12 UTC 2007 i686 GNU/Linux
+			On Solaris
+			isainfo -b -v
+			/usr/bin/isainfo -kv
+			On AIX
+			$ getconf -a | grep KERN
+			$ file /usr/lib/boot/unix*
+			On HP-UX
+			/usr/bin/ getconf KERNEL_BITS
+			/usr/bin/file /stand/vmunix
 
 
 
 					 
 History commands ========   export HISTSIZE=100000
-							export HISTFILESIZE=409600
-							export HISTCONTROL=ignoredups
+			    export HISTFILESIZE=409600
+			    export HISTCONTROL=ignoredups
 
 ls commands
 
@@ -345,6 +345,7 @@ SOLARIS Handy Commands
 		svmon -P | grep -p 15256 ==> for a given process
 
  sysinfo
+ ==================
 vmstat
 /usr/sbin/prtconf
 for general information + memory
@@ -658,7 +659,7 @@ Changing the standard prompt for Oracle Users
 JDBC connection strings :
 ===========================
 
-				 jdbc:oracle:thin:@(DESCRIPTION=(LOAD_BALANCE=off)(FAILOVER=on)(CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb01p.cengage.info)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb02p.cengage.info)(PORT=1526)))(CONNECT_DATA=(SERVICE_NAME=esbmapd_prim)))
+ jdbc:oracle:thin:@(DESCRIPTION=(LOAD_BALANCE=off)(FAILOVER=on)(CONNECT_TIMEOUT=3)(RETRY_COUNT=3)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb01p.cengage.info)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=ohcinxesbdb02p.cengage.info)(PORT=1526)))(CONNECT_DATA=(SERVICE_NAME=esbmapd_prim)))
 				 
 				 jdbc:oracle:thin:@(DESCRIPTION = (FAILOVER=on)
 					 (CONNECT_TIMEOUT=15) (RETRY_COUNT=20) (RETRY_DELAY=3)
