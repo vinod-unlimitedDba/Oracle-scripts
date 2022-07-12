@@ -22,14 +22,31 @@ NVL(OSUSER, '-') OSUSER,
 NVL(TERMINAL,'-') TERMINAL,
 SUM(DECODE(V$SESSION.USERNAME, NULL, 0,1)) SESSIONS
 FROM
-DBA_USERS, V$SESSION
-WHERE DBA_USERS.USERNAME = V$SESSION.USERNAME (+)
-GROUP BY
-DBA_USERS.USERNAME,
+DBA_USERS, V$SESSION WHERE DBA_USERS.USERNAME = V$SESSION.USERNAME (+)
+GROUP BY DBA_USERS.USERNAME,
 DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED'),
-OSUSER,
-TERMINAL
-ORDER BY 1 ;
+OSUSER, TERMINAL ORDER BY 1 ;
+
+PROMPT
+PROMPT
+PROMPT NUMBER OF CONNECTED SESSIONS
+PROMPT =============================
+select
+       substr(a.spid,1,9) pid,
+       substr(b.sid,1,5) sid,
+       status,
+       TO_CHAR(logon_time,'DD-Mon-YYYY HH24:MI:SS'),
+       substr(b.serial#,1,5) ser#,
+       substr(b.machine,1,6) box,
+       substr(b.username,1,10) username,
+       substr(b.osuser,1,8) os_user,
+       substr(b.program,1,30) program
+from v$session b, v$process a
+where
+b.paddr = a.addr
+and type='USER'
+order by status;
+
 
 Script to see particular session waitevent
 ===============================================
@@ -61,6 +78,57 @@ You can list all user sessions which are ACTIVE state more than 600 Second with 
 ===============================================================================================
 select count(*) FROM gv$session s, gv$process p
 WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE' and last_call_et > 600
+/
+
+Session details associated with SID and Event waiting for
+---------------------------------------------------------
+set pages 50000 lines 32767
+col EVENT for a40
+
+select a.sid, a.serial#, a.status, a.program, b.event,to_char(a.logon_time, 'dd-mon-yy hh24:mi') LOGON_TIME,to_char(Sysdate, 'dd-mon-yy-hh24:mi') CURRENT_TIME, (a.last_call_et/3600) "Hrs connected" from v$session a,v$session_wait b where a.sid in(&SIDs) and a.sid=b.sid order by 8;
+
+
+Detail report user session
+===================================
+
+COL orauser HEA "   Oracle User   " FOR a17 TRUNC
+COL osuser HEA " O/S User " FOR a10 TRUNC
+COL ssid HEA "Sid" FOR a4
+COL sserial HEA "Serial#" FOR a7
+COL ospid HEA "O/S Pid" FOR a7
+COL slogon HEA "  Logon Time  " FOR a14
+COL sstat HEA "Status" FOR a6
+COL auth HEA "Auth" FOR a4
+COL conn HEA "Con" FOR a3
+ 
+SELECT
+   ' '||NVL( s.username, '    ????    ' ) orauser, 
+   ' '||s.osuser osuser, 
+   LPAD( s.sid, 4 ) ssid, LPAD( s.serial#, 6 ) sserial,
+   LPAD( p.spid, 6 ) ospid, 
+   INITCAP( LOWER( TO_CHAR( logon_time, 'MONDD HH24:MI:SS' ) ) ) slogon,
+   DECODE( s.status, 'ACTIVE', ' Busy ', 'INACTIVE', ' Idle ', 'KILLED', ' Kill ', '  ??  ' ) sstat, 
+   DECODE( sc.authentication_type, 'DATABASE', ' DB ', 'OS', ' OS ', ' ?? ' ) auth,
+   DECODE( s.server, 'DEDICATED', 'Dir', 'NONE', 'Mts', 'SHARED', 'Mts', '???' ) conn
+FROM
+   v$session s, v$process p, 
+   (
+   SELECT
+      DISTINCT sid, authentication_type
+   FROM
+      v$session_connect_info
+   ) sc
+WHERE
+   s.paddr = p.addr AND s.sid = sc.sid
+ORDER BY
+   s.status,s.sid
+/
+
+Total cursors open, by session
+======================================
+select a.value, s.username, s.sid, s.serial# from gv$sesstat a,gv$statname b, gv$session s
+where a.statistic# = b.statistic#  and s.sid=a.sid and b.name = 'opened cursors current' order by 1;
+
 
 KIlling inactive session at os level
 =====================================
@@ -74,6 +142,22 @@ select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr
           set pagesize 1200;
           set linesize 1200;
           select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and           logon_time < sysdate-0.33 and action like 'FRM:%');
+
+
+
+===================================================================
+Notification Text: The following list of SQL statements have been running for over 60 minutes.
+SQL Statement:
+===============================================================
+select 'SID:'||s.sid||', Serial#:'||s.serial#||', Username:'||s.username||', Machine:'||s.machine||
+       ', Program:'||s.program||', HashValue:'||s.sql_hash_value||', SQL Text:'||nvl(substr(sql.sql_text,1,40),'Unknown SQL'), last_call_et
+from v$session s
+left outer join v$sql sql on sql.hash_value=s.sql_hash_value and sql.address=s.sql_address
+where s.status='ACTIVE'
+and s.type <> 'BACKGROUND'
+and last_call_et >= 3600
+
+
 
 
 Script to how active transaction in the database
