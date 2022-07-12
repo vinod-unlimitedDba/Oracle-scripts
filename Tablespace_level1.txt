@@ -102,9 +102,30 @@ from SYS.SM$TS_USED,
 (select sum((BYTES/1024)/1024) total, sum((decode(MAXBYTES,0,bytes,maxbytes)/1024)/1024) max
 from dba_data_files where tablespace_name='&1') where tablespace_name='&1'; 
 
+TBS AND Datafile details 
+===================
+set pages 9999 lines 300 
+set VERIFY OFF FEEDBACK OFF
+COLUMN file_name         FORMAT A51        HEADING 'File Name'
+COLUMN tablespace_name   FORMAT A15        HEADING 'Tablespace'
+COLUMN meg               FORMAT 99,999.90  HEADING 'Megabytes'
+COLUMN status            FORMAT A10        HEADING 'Status'
+COLUMN autoextensible    FORMAT A3         HEADING 'Auto Extend'
+COLUMN maxmeg            FORMAT 99,999     HEADING 'Max|Megabytes'
+COLUMN Increment_by      FORMAT 9,999      HEADING 'Inc|By'
+
+SELECT tablespace_name,file_name,bytes/1048576 meg,status,autoextensible,maxbytes/1048576 maxmeg,increment_by
+FROM dba_data_files
+UNION
+SELECT tablespace_name,file_name,bytes/1048576 meg,status,autoextensible,maxbytes/1048576 maxmeg,increment_by
+FROM dba_temp_files
+ORDER BY tablespace_name
+/
+
+
 
 Very good script for tablespace usage 
-=======================================Good one
+=======================Good one===============
 
 	set pages 9999 lines 900
 	col TABLESPACE_NAME for a30
@@ -153,6 +174,31 @@ DEFINE tbs=&APPLICATION_TS
 	where tablespace_name = upper('&tbs') )
 	order by cmd
 /
+
+TABLESPACE LOCATION
+=======================
+set lines 150
+column file_name format a80
+column MB format 999,999,999
+column MAXMB format 999,999,999
+select file_name, bytes/1024/1024/1024 GB, autoextensible, maxbytes/1024/1024/1024 MAXGB
+from dba_data_files
+where tablespace_name = upper('&ts_name');
+
+**********Finding which datafile having autoextend on*******************************
+select substr(file_name,1,50), AUTOEXTENSIBLE from dba_data_files
+‎select tablespace_name,AUTOEXTENSIBLE from dba_data_files;
+ 
+******* particular datafile deatils************************
+ set pages 9999 lines 300
+col tablespace_name for a30
+col file_name for a80
+select tablespace_name, file_name, bytes/1024/1024/1024 SIZE_GB, autoextensible,
+maxbytes/1024/1024/1024 MAXSIZE_GB 
+from dba_data_files
+where tablespace_name='&tablespace_name' order by 1,2;
+
+
 
 finding Distinct Tablespace for user
 ==================
@@ -242,6 +288,38 @@ SELECT TO_CHAR (sp.begin_interval_time,'DD-MM-YYYY') days,
  AND ts.tsname = dt.tablespace_name AND ts.tsname NOT IN ('SYSAUX','SYSTEM')
  GROUP BY TO_CHAR (sp.begin_interval_time,'DD-MM-YYYY'), ts.tsname
  ORDER BY ts.tsname, days;
+
+Count of object in tablespace
+====================================
+SELECT tablespace_name, owner, segment_type "Object Type",
+       COUNT(owner) "Number of Objects",
+       ROUND(SUM(bytes) / 1024 / 1024/1024, 2) "Total Size in GB"
+FROM   sys.dba_segments
+WHERE  tablespace_name IN ('&TBS')
+GROUP BY tablespace_name, owner, segment_type
+ORDER BY tablespace_name, owner, segment_type;
+
+
+
+
+Dynamic To remove datafiles from os location 
+==========================
+select 'rm ' || name from (select name  from v$datafile
+ union all
+ select name  from  v$tempfile
+ union  all
+ select  member  from  v$logfile
+  union   all
+  select  name   from    v$controlfile
+ )
+
+
+
+
+
+
+
+
 
 -- Script written for a case where data was loaded rapidly and without prior notice
 -- DBAs got tired of adding more space every few hours
