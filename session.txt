@@ -144,6 +144,14 @@ select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr
           select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and           logon_time < sysdate-0.33 and action like 'FRM:%');
 
 
+Kill session for sql_id
+===========================
+SELECT 'alter system kill session ' ||''''||SID||','||SERIAL#||' immediate ;'
+FROM v$session
+WHERE sql_id='&sql_id'; 
+
+--- FOR RAC  select 'alter system kill session ' ||''''||SID||','||SERIAL#||',@'||inst_id||''''||' immediate ;'  from gv$session where sql_id='&sql_id'
+
 
 ===================================================================
 Notification Text: The following list of SQL statements have been running for over 60 minutes.
