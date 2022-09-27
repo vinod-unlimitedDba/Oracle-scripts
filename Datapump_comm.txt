@@ -1,0 +1,92 @@
+
+Commands examples
+
+Full database export
+============================
+      nohup expdp \'/ as sysdba\' directory=DP2 dumpfile=expdp_siebmapd_MAY5_%u.dmp logfile=expdp_siebmapd_MAY05.log full=y parallel=10 
+      flashback_time=systimestamp &
+
+      Copy dumps to target server /oraclebkup/exp. After dumps are compied to 12c target server, do import with below command. 
+
+      nohup impdp \'/ as sysdba\' directory=DP2 dumpfile=expdp_siebmapd_Dec14_%u.dmp logfile=impdp_siebmapd_Dec14.log exclude=INDEX,STATISTICS 
+      parallel=10 transform=disable_archive_logging:Y &
+
+      After import is completed, open another session generate the DDL for INDEX.
+
+      impdp \'/ as sysdba\' directory=DP2 dumpfile=expdp_siebmapd_Dec08_%u.dmp logfile=impdp_siebmapd_Dec08.log include=INDEX sqlfile=ddl_index.sql
+
+      Open the ddl_index.sql and replace PARALLEL 1 with PARALLEL 10 nologging and execute the ddl_index.sql in background with below command.
+
+      nohup sqlplus / as sysdba @/oraclebkup/exp/ddl_index.sql &
+
+
+      Above script will create INDEXES. Once INDEXES is completed execute below command.
+
+      nohup impdp \'/ as sysdba\' directory=DP2 dumpfile=expdp_siebmapd_Dec08_%u.dmp logfile=impdp_siebmapd_Dec08.log
+      include=STATISTICS parallel=10 transform=disable_archive_logging:Y &  
+
+
+– Disable the generation of REDO LOG data during the import by using this new impdp parameter:
+TRANSFORM=DISABLE_ARCHIVE_LOGGING:Y LOGTIME=ALL METRICS=yes
+
+Query example with multiple schemas 
+ ========================================
+    expdp  \'/ as sysdba\' directory=DATAPUMP dumpfile=VT5SCHEMA_26sep22_v1.dmp logfile=VT5SCHEMA_26sep22_v1.log 
+    schemas=ECRDVT INCLUDE=TABLE:"\"IN (select table_name from dba_tables where owner ='ECRDVT')\"" query="\"where LDBID=7080\""
+
+    query=\"where deptno=10\"
+
+Exculde system schema
+=======================
+      nohup impdp \'/ as sysdba\' directory=TEST dumpfile=expdp_siebmadv_Nov17_%u.dmp logfile=impdp_siebmadv_Dec10.log 
+      EXCLUDE=SCHEMA:\"IN\(\'ANONYMOUS\',\'CTXSYS\',\'DBSNMP\',\'DIP\',\'DMSYS\',\'MDSYS\',\'MGMT_VIEW\',\'OLAPSYS\',\'ORACLE_OCM\',\'ORDPLUGINS\',\'ORDSYS\',\'OUTLN\',\'SI_INFORMTN_SCHEMA\',\'EXFSYS\',\'SQLTXADMIN\',\'SQLTXPLAIN\',\'SYS\',\'SYSTEM\',\'TSMSYS\',\'WMSYS\',\'MDSYS\',\'XDB\'\)\" 
+      parallel=11 transform=disable_archive_logging:Y &
+
+      impdp system/manager DIRECTORY=data_dump DUMPFILE=AR_G_PROD_Compress_dd-mm-yyyy.dmp 
+      EXCLUDE=SCHEMA:\”IN\(\’SYS\’,\’SYSTEM\’,\’OUTLN\’,\’ORDDATA\’,\’OLAPSYS\’,\’MDDATA\’,\’SPATIAL_WFS_ADMIN_USR\’,\’ANONYMOUS\’,\’SPATIAL_CSW_ADMIN_USR\’,\’ANONYMOUS\’,\’FLOWS_FILES\’,\’APEX_PUBLIC_USER\’,\’APEX_030200\’,\’OWBSYS\’,\’OWBSYS_AUDIT\’,\’SCOTT\’,\’SYSMAN\’,\’MGMT_VIEW\’\)\”
+
+
+
+SQLPLUS DATAPUMP COMMANDS
+===========================
+
+        Active datapump job sessions status :-
+        =============================
+        set lines 150 pages 100
+        numwidth 7
+        col program for a38
+        col username for a10
+        col spid for a7
+        select to_char(sysdate,’YYYY-MM-DD HH24:MI:SS’) “DATE”, s.program, s.sid, s.status, s.username,d.job_name, p.spid, s.serial#, p.pid,s.eventfrom v$session s, v$process p, dba_datapump_sessions d where p.addr=s.paddr and s.saddr=d.saddr;
+
+        Run the following query to monitor the progress of datapump jobs :-
+        ====================================
+        select
+        round(sofar/totalwork*100,2) percent_completed,
+        v$session_longops.*
+        from
+        v$session_longops
+        where
+        sofar <> totalwork
+        order by
+        target,
+        sid;
+
+        Check current job details and query :- 
+        =====================
+        select x.job_name,b.state,b.job_mode,b.degree, x.owner_name,z.sql_text, p.message, p.totalwork, p.sofar, round((p.sofar/p.totalwork)*100,2) done,
+        p.time_remainingfrom dba_datapump_jobs b left join dba_datapump_sessions x on (x.job_name = b.job_name)left join v$session y on (y.saddr = x.saddr)left join v$sql z 
+        on (y.sql_id = z.sql_id)left join v$session_longops p ON (p.sql_id = y.sql_id)WHERE y.module=’Data Pump Worker’AND p.time_remaining > 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
