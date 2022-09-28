@@ -29,6 +29,15 @@ Full database export
 – Disable the generation of REDO LOG data during the import by using this new impdp parameter:
 TRANSFORM=DISABLE_ARCHIVE_LOGGING:Y LOGTIME=ALL METRICS=yes
 
+Network link example
+==================================
+impdp directory=MY_DUMP_DIR LOGFILE=dblink_transfer.log 
+network_link=SOURCE_DB remap_schema=scott:hr
+To import multiple schemas, make sure to use a DBA user (sys) to perform this action
+
+impdp sys directory=MY_DUMP_DIR LOGFILE=dblink_transfer.log 
+network_link=SOURCE_DB schemas=IJS,scott,hr
+
 Query example with multiple schemas 
  ========================================
     expdp  \'/ as sysdba\' directory=DATAPUMP dumpfile=VT5SCHEMA_26sep22_v1.dmp logfile=VT5SCHEMA_26sep22_v1.log 
