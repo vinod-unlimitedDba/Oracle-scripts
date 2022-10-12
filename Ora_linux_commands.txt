@@ -655,6 +655,8 @@ Changing the standard prompt for Oracle Users
 		ps -ef|grep DBNAME |grep LOCAL=NO |wc -l ==== count of no of process of DB
 
 		select oscomm('/bin/ls -ltr') from dual;  ===== to run os command frm sql
+		
+		alias ora_homes=sort -u -t : -k 2,2 /etc/oratab | grep -v "^#" | awk -F ":" '{print $2}'     ===== list oracle home
 
 JDBC connection strings :
 ===========================
