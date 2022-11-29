@@ -77,12 +77,36 @@ END;
 		END;
 		/
     
-    
-    DDL TYPE
-=========
-    
-
-
+ INvalid object_
+ ==================
+DECLARE
+CURSOR c IS
+SELECT owner, object_name, object_type
+FROM dba_objects
+WHERE status='INVALID';
+v_sql VARCHAR2(500);
+BEGIN
+  FOR v IN c LOOP
+    IF v.object_type='PACKAGE BODY' THEN
+        v_sql:='ALTER PACKAGE ' || v.owner || '.' || v.object_name || ' COMPILE BODY'; 
+    ELSIF v.object_type='SYNONYM' THEN
+	v_sql:=dbms_metadata.get_ddl(object_type=>'SYNONYM',
+                                     name=>v.object_name,
+                                     schema=>v.owner);
+    ELSE
+        v_sql:='ALTER ' || v.object_type || ' ' || v.owner || '.' || v.object_name || ' COMPILE'; 
+    END IF;
+    --DBMS_OUTPUT.PUT_LINE(v_sql);
+    BEGIN
+        EXECUTE IMMEDIATE v_sql;
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE(v_sql);
+            DBMS_OUTPUT.PUT_LINE(SQLERRM);
+    END;
+  END LOOP;
+END;
+/
 
 
 
