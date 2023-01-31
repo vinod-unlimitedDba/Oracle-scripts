@@ -1,7 +1,7 @@
 
 Finding tablespace usage in GB
 ==================================
-
+```
      select b.tablespace_name, tbs_size SizeGB, a.free_space FreeGB from
      (select tablespace_name, round(sum(bytes)/1024/1024/1024,1) as free_space
      from dba_free_space group by tablespace_name UNION
@@ -11,9 +11,11 @@ Finding tablespace usage in GB
      select tablespace_name, sum(bytes)/1024/1024/1024 tbs_size
      from dba_temp_files group by tablespace_name ) b where a.tablespace_name(+)=b.tablespace_name 
 / 
+```
 
 2 =====> USAGE shows in graph (used column)
-======================================
+=================================================
+```
         set pages 9999 lines 900
         col "% Used" for a6	
         col "Used" for a40
@@ -34,10 +36,10 @@ Finding tablespace usage in GB
         group by tablespace_name) t
         where t.tablespace_name = f.tablespace_name (+)
         order by t.tablespace_name;
-
+```
  Monitoring all puggable tablespace in 12c
 ===========================================
-
+```
 SET LINES 1320 PAGES 1000
 COL con_name        FORM A15 HEAD "Container|Name"
 COL tablespace_name FORM A15
@@ -69,9 +71,10 @@ FROM v$containers vc2, cdb_temp_files tf
 WHERE vc2.con_id = tf.con_id
 GROUP BY vc2.con_id, vc2.name, tf.tablespace_name
 ORDER BY 1, 2;
- 
+ ```
 Details for one particular TBS
 ========================================================
+```
 SELECT d.status "Status", d.tablespace_name "Name", d.contents "Type", d.extent_management "Extent Management",
 NVL(a.bytes / 1024 / 1024, 0) "Size (M)",
 (NVL(a.bytes -NVL(f.bytes, 0), 0)/1024/1024) "Used (M)",
@@ -92,7 +95,8 @@ d.tablespace_name = t.tablespace_name(+) AND d.extent_management like 'LOCAL' AN
 'TEMPORARY'
 order by 2
 /
-
+```
+```
 select round((bytes/1024)/1024,0) "Used Space(MB)",
 round(total,0) "Allocated size(MB)",
 round(max,0) "Maximum allowable(MB)",
@@ -101,9 +105,10 @@ round(((max-(BYTES/1024)/1024)/max)*100,2) "FREE(%)"
 from SYS.SM$TS_USED,
 (select sum((BYTES/1024)/1024) total, sum((decode(MAXBYTES,0,bytes,maxbytes)/1024)/1024) max
 from dba_data_files where tablespace_name='&1') where tablespace_name='&1'; 
-
+```
 TBS AND Datafile details 
 ===================
+```
 set pages 9999 lines 300 
 set VERIFY OFF FEEDBACK OFF
 COLUMN file_name         FORMAT A51        HEADING 'File Name'
@@ -121,12 +126,11 @@ SELECT tablespace_name,file_name,bytes/1048576 meg,status,autoextensible,maxbyte
 FROM dba_temp_files
 ORDER BY tablespace_name
 /
+```
+Very good script for tablespace usage =====Good ONE
+==================================
 
-
-
-Very good script for tablespace usage 
-=======================Good one===============
-
+```
 	set pages 9999 lines 900
 	col TABLESPACE_NAME for a30
 	select a.tablespace_name,
@@ -148,11 +152,12 @@ Very good script for tablespace usage
 	where a.tablespace_name = b.tablespace_name
 	group by a.tablespace_name
 order by 4; 
-
+```
 Dynamic script for adding datafile or resize particular tablespace
 ==========================================================
 DEFINE tbs=&APPLICATION_TS
 
+```
 	select cmd from 
 	(select file_name,'alter database datafile ''' || file_name 
 	|| ''' resize ' ||  bytes/1024/1024/1024 || 'G;' cmd 
@@ -174,9 +179,10 @@ DEFINE tbs=&APPLICATION_TS
 	where tablespace_name = upper('&tbs') )
 	order by cmd
 /
-
+```
 TABLESPACE LOCATION
 =======================
+```
 set lines 150
 column file_name format a80
 column MB format 999,999,999
@@ -184,12 +190,16 @@ column MAXMB format 999,999,999
 select file_name, bytes/1024/1024/1024 GB, autoextensible, maxbytes/1024/1024/1024 MAXGB
 from dba_data_files
 where tablespace_name = upper('&ts_name');
+```
 
-**********Finding which datafile having autoextend on*******************************
+Finding which datafile having autoextend on
+===============================================
+```
 select substr(file_name,1,50), AUTOEXTENSIBLE from dba_data_files
-‎select tablespace_name,AUTOEXTENSIBLE from dba_data_files;
- 
+select tablespace_name,AUTOEXTENSIBLE from dba_data_files;
+ ```
 ******* particular datafile deatils************************
+ ```
  set pages 9999 lines 300
 col tablespace_name for a30
 col file_name for a80
@@ -197,24 +207,25 @@ select tablespace_name, file_name, bytes/1024/1024/1024 SIZE_GB, autoextensible,
 maxbytes/1024/1024/1024 MAXSIZE_GB 
 from dba_data_files
 where tablespace_name='&tablespace_name' order by 1,2;
-
+```
 
 
 finding Distinct Tablespace for user
 ==================
-
+```
 SELECT DISTINCT sgm.TABLESPACE_NAME , dtf.FILE_NAME
 FROM DBA_SEGMENTS sgm
 JOIN DBA_DATA_FILES dtf ON (sgm.TABLESPACE_NAME = dtf.TABLESPACE_NAME)
 WHERE sgm.OWNER = '&USER'
 /
-
+```
 How To Get Tablespace Quota Details Of An User In Oracle:
 ========================================================
 
 TABLESPACE QUOTA DETAILS OF ALL THE USERS:
 ==========================================
 
+```
 set pagesize 200
 set lines 200
 col ownr format a20         justify c heading 'Owner'
@@ -237,10 +248,11 @@ WHERE  max_bytes != 0
 ORDER  BY 1,2
 /
 
-
+```
 
 TABLESPAE QUOTA DETAILS FOR A PARTICULAR USER:
 ==============================================
+```
 set pagesize 200
 set lines 200
 col ownr format a20         justify c heading 'Owner'
@@ -264,21 +276,25 @@ WHERE  ( max_bytes != 0
 ORDER  BY 1,2
 / 
 
+```
 
 Which schema taking more space under TS
-**************************************
+----------------------------------------------
+```
 Select obj.owner "Owner", obj_cnt "Objects", decode(seg_size, NULL, 0, seg_size) "size MB"
 from (select owner, count(*) obj_cnt from dba_objects group by owner) obj,
  (select owner, ceil(sum(bytes)/1024/1024) seg_size  from dba_segments group by owner) seg
   where obj.owner  = seg.owner(+)
   order    by 3 desc ,2 desc, 1;
-
+```
+```
 SELECT t.tablespace_name, b.ts#, t.block_size, b.status, COUNT(*) num_bufs, ROUND(COUNT(*) * t.block_size / 1048576) pool_mb 
 FROM v$bh b, dba_tablespaces t, v$tablespace vt
 WHERE b.ts# = vt.ts# AND vt.name = t.tablespace_name GROUP BY t.tablespace_name, b.ts#, t.block_size, b.status ORDER BY COUNT(*) DESC;
-
+```
 To check Growth rate of  Tablespace
-********************************
+--------------------------------------------
+```
 SELECT TO_CHAR (sp.begin_interval_time,'DD-MM-YYYY') days,
  ts.tsname , max(round((tsu.tablespace_size* dt.block_size )/(1024*1024),2) ) cur_size_MB,
  max(round((tsu.tablespace_usedsize* dt.block_size )/(1024*1024),2)) usedsize_MB
@@ -288,9 +304,10 @@ SELECT TO_CHAR (sp.begin_interval_time,'DD-MM-YYYY') days,
  AND ts.tsname = dt.tablespace_name AND ts.tsname NOT IN ('SYSAUX','SYSTEM')
  GROUP BY TO_CHAR (sp.begin_interval_time,'DD-MM-YYYY'), ts.tsname
  ORDER BY ts.tsname, days;
-
+```
 Count of object in tablespace
 ====================================
+```
 SELECT tablespace_name, owner, segment_type "Object Type",
        COUNT(owner) "Number of Objects",
        ROUND(SUM(bytes) / 1024 / 1024/1024, 2) "Total Size in GB"
@@ -298,12 +315,13 @@ FROM   sys.dba_segments
 WHERE  tablespace_name IN ('&TBS')
 GROUP BY tablespace_name, owner, segment_type
 ORDER BY tablespace_name, owner, segment_type;
-
+```
 
 
 
 Dynamic To remove datafiles from os location 
 ==========================
+```
 select 'rm ' || name from (select name  from v$datafile
  union all
  select name  from  v$tempfile
@@ -312,21 +330,18 @@ select 'rm ' || name from (select name  from v$datafile
   union   all
   select  name   from    v$controlfile
  )
+ /
+```
 
-
-
-
-
-
-
-
-
+------------------------------------------------
 -- Script written for a case where data was loaded rapidly and without prior notice
 -- DBAs got tired of adding more space every few hours
 -- But there was a global company policy against auto-extend
 -- So we decided that tablespace size should double on every resize
 -- To minimize the number of resizes DBAs had to do.
+------------------------------------------------------------
 
+```
 declare
   new_size number :=0;
   file_to_grow dba_data_files.file_name%TYPE := null;
@@ -390,6 +405,8 @@ begin
     end if;
   END LOOP;
 end;
+/
+```
 
 
 
