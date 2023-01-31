@@ -7,8 +7,9 @@ from v$lock a, v$lock b
 where a.SID != b.SID and a.ID1 = b.ID1  and a.ID2 = b.ID2 and 
 b.request > 0 and a.block = 1;
 ```
-   ```   RAC
-      =====
+   ```  
+   RAC
+   ====
       select a.SID "Blocking Session", b.SID "Blocked Session"  
       from gv$lock a, gv$lock b  where a.SID != b.SID and a.ID1 = b.ID1  and a.ID2 = b.ID2 and  b.request > 0 and a.block = 1;
 ```
