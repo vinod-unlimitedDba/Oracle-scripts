@@ -26,7 +26,7 @@ To kill several sessions of a user, following PLSQL block can be used
 
 
 ##### Killing session for particular user
--------------------------------------------
+
 	DECLARE
 	 schema_name VARCHAR2(255):='username1'; -- Insert your username instead of 'username1'
 	 row_count NUMBER;
@@ -38,8 +38,8 @@ To kill several sessions of a user, following PLSQL block can be used
 	 END LOOP;
 
 ###### Table lock
-=================
-		DECLARE
+
+              	DECLARE
 		 CURSOR v_curqu IS
 		 SELECT A.SID, A.SERIAL#, A.USERNAME
 		 FROM V$SESSION A, V$LOCKED_OBJECT B, DBA_OBJECTS C
@@ -57,7 +57,6 @@ To kill several sessions of a user, following PLSQL block can be used
 		/
 
 ##### Creating synonym
-=====================
 		begin
 		  FOR r IN (SELECT owner,object_name from dba_objects where owner='RDTEAM1' and object_type='TABLE')
 		  loop 
@@ -66,9 +65,9 @@ To kill several sessions of a user, following PLSQL block can be used
 		END;
 		/   
 		
-Drop synonym
-===================
-		begin
+##### Drop synonym
+	
+	begin
 		  FOR r IN (SELECT owner,object_name from dba_objects where owner='TEST' and object_type='SYNONYM')
 		  loop 
 		    EXECUTE IMMEDIATE 'drop synonym TEST."'|| r.object_name ||'"';
@@ -76,8 +75,8 @@ Drop synonym
 		END;
 		/
     
- INvalid object_
- ==================
+ ##### INvalid object_
+ 	
 	DECLARE
 	CURSOR c IS
 	SELECT owner, object_name, object_type
