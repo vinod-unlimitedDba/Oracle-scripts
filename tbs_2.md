@@ -1,7 +1,7 @@
 
-Script for Datafile Location and Size
-
-
+##### Script for Datafile Location and Size
+----------------------------------------------------
+'''
 REM Data File Listing for EXAMPLE Database
 REM Script File Name: My_Directory\DATAFILE.sql
 REM Spool File Name: My_Directory\DATAFILE.lst
@@ -31,11 +31,12 @@ TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
 FROM SYS.DBA_DATA_FILES
 ORDER BY TABLESPACE_NAME, FILE_NAME;
 SPOOL OFF
-
+'''
 
 
 Script for Listing Tablespaces with Extent Information
-
+--------------------------------------------------------------------
+'''
 REM Tablespace Extent Listing for EXAMPLE Database
 REM Script File Name: My_Directory\TABLESPC.sql
 REM Spool File Name: My_Directory \TABLESPC.lst
@@ -65,11 +66,12 @@ TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
 FROM DBA_TABLESPACES
 ORDER BY TABLESPACE_NAME;
 SPOOL OFF
+'''
 
 
+##### Script for Listing Segments with Extent Information
 
-Script for Listing Segments with Extent Information
-
+'''
 REM Segment Extent Listing for EXAMPLE Database
 REM Script File Name: My_Directory\SEGEXTN.sql
 REM Spool File Name: My_Directory\SEGEXTN.lst
@@ -102,12 +104,12 @@ SEGMENT_TYPE = 'TABLE' OR SEGMENT_TYPE = 'INDEX'
 AND TABLESPACE_NAME != 'SYSTEM'
 ORDER BY TABLESPACE_NAME, SEGMENT_NAME;
 SPOOL OFF
+'''
 
 
+##### Script for Listing Segments with Extent Allocation
 
-Script for Listing Segments with Extent Allocation
-
-
+'''
 REM Tablespace, Segment, and Extent Listing in EXAMPLE Database
 REM Script File Name: My_Directory\SEG_FRAG.sql
 REM Spool File Name: My_Directory \SEG_FRAG.lst
@@ -148,11 +150,12 @@ a.TABLESPACE_NAME != 'SYSTEM'
 ORDER BY a.TABLESPACE_NAME, a.SEGMENT_TYPE, a.SEGMENT_NAME,
 EXTENT_ID;
 SPOOL OFF
+'''
 
 
+ ###### Script for Listing Table Structures
 
- Script for Listing Table Structures
-
+'''
 REM Table Structure Listing for EXAMPLE Database
 REM Script File Name: My_Directory\TBL_STRC.sql
 REM Spool File Name: My_Directory\TBL_STRC.lst
@@ -184,11 +187,12 @@ FROM DBA_TABLES a, DBA_TAB_COLUMNS b
 WHERE a.TABLE_NAME = b.TABLE_NAME
 ORDER BY 1;
 SPOOL OFF
+'''
 
 
+##### Index Structure Listing
 
-Index Structure Listing
-
+'''
 REM Index Listing for EXAMPLE Database
 REM Script File Name: My_Directory\INDXRPT.sql
 REM Spool File Name: My_Directory \INDXRPT.lst
@@ -220,11 +224,11 @@ TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
 FROM DBA_IND_COLUMNS
 ORDER BY TABLE_NAME, INDEX_NAME;
 SPOOL OFF
+'''
 
 
-
-Script for Listing Constraints
-
+##### Script for Listing Constraints
+'''
 REM Constraint Listing for EXAMPLE Database
 REM Script File Name: My_Directory\CONSTRAINT.sql
 REM Spool File Name: My_Directory\CONSTRAINT.lst
@@ -259,11 +263,11 @@ a.CONSTRAINT_NAME = b.CONSTRAINT_NAME AND
 a.TABLE_NAME = b.TABLE_NAME
 ORDER BY TABLE_NAME, CONSTRAINT_NAME;
 SPOOL OFF
+'''
 
+##### Script for Listing Users of SYSTEM Tablespace
 
-Script for Listing Users of SYSTEM Tablespace
-
-
+'''
 REM SYSTEM tablespace used by users
 REM Script File Name: My_Directory\SYSTEM_User_Objects.sql
 REM Spool File Name: My_Directory\SYSTEM_User_Objects.lst
@@ -295,8 +299,9 @@ from dba_users where
 dba_users.TEMPORARY_TABLESPACE = 'SYSTEM') and
 dba_users.USERNAME not in ('SYS', 'SYSTEM');
 spool off
+'''
 
-
+'''
 REM Used Space Extent Map for EXAMPLE Database
 REM Script File Name: My_Directory\extent_contiguity.sql
 REM Spool File Name: My_Directory \extent_contiguity.lst
@@ -336,11 +341,12 @@ a.TABLESPACE_NAME != 'SYSTEM' AND
 a.SEGMENT_NAME NOT LIKE '%$%'
 ORDER BY a.SEGMENT_NAME, EXTENT_ID;
 SPOOL OFF
+'''
 
 
+##### : Status of Free Space in Tablespaces
 
-: Status of Free Space in Tablespaces
-
+'''
 SET LINESIZE 100
 SET PAGESIZE 41
 SET NEWPAGE 0
@@ -349,10 +355,10 @@ SELECT TABLESPACE_NAME TABLESPACE, ROUND (SUM (BYTES) / 1048576)
 ROUND (MAX (BYTES) / 1048576) "Largest Contiguous Chunk in MB"
 FROM DBA_FREE_SPACE
 GROUP BY TABLESPACE_NAME;
+'''
 
-
-script for  Segments Unable to Extend
-
+##### script for  Segments Unable to Extend
+'''
 REM Free Space Unavailable for EXAMPLE Database
 REM Script File Name: My_Directory\Free_Space_Unavailable.sql
 REM Spool File Name: My_Directory\Free_Space_Unavailable.lst
@@ -389,13 +395,13 @@ group by tablespace_name) f
 where f.tablespace_name = s.tablespace_name
 and s.next_extent > f.free_bytes;
 SPOOL OFF
+'''
 
+##### FSFI should be 100. But as fragmentation occurs, FSFI gradually decreases.
+##### In general, a tablespace with FSFI < 30 should be further examined for possible defragmentation.
+##### Run the script in Figure 5.24 to calculate FSFI for each tablespace
 
-  FSFI should be 100. But as fragmentation occurs, FSFI gradually decreases.
-In general, a tablespace with FSFI < 30 should be further examined for possible defragmentation.
-Run the script in Figure 5.24 to calculate FSFI for each tablespace
-
-
+'''
 REM Measure the level of free space fragmentation in tablespaces
 REM Script File Name: My_directory\FSFI.sql
 REM Script File Name: My_directory\FSFI.lst
@@ -425,41 +431,41 @@ FROM DBA_FREE_SPACE
 GROUP BY TABLESPACE_NAME
 ORDER BY 1;
 SPOOL OFF
+'''
 
-
-Script for Listing Free Space Extents in Tablespaces
+##### Script for Listing Free Space Extents in Tablespaces
 
 List the File IDs, Block IDs, and the total blocks for each tablespace with FSFI < 30
 and determine how many of their free space extents are contiguous.
 
-
-REM Free Space Listing for Tablespaces in EXAMPLE Database
-REM Script File Name: My_Directory\FREESPACE.sql
-REM Spool File Name My_Directory\FREESPACE.lst
-REM Author: NAME
-REM Date Created: DATE
-REM Purpose: Information on free space extents in all
-REM tablespaces in EXAMPLE database
-REM
-REM
-COLUMN TODAY NEW_VALUE xTODAY NOPRINT FORMAT A1 TRUNC
-TTITLE LEFT xTODAY -
-RIGHT 'Page ' FORMAT 999 SQL.PNO -
-CENTER 'Free Space List - EXAMPLE Database ' SKIP 4
-BTITLE 'Script File: My_Directory\FREESPACE.sql|Spool File:
-My_Directory\FREESPACE.lst'
-COLUMN TABLESPACE_NAME HEADING 'Tablespace|Name' FORMAT A15
-COLUMN FILE_ID HEADING 'File ID' FORMAT 999
-COLUMN BLOCK_ID HEADING 'Block ID' FORMAT 999999999
-COLUMN BLOCKS HEADING 'Total|Blocks' FORMAT 999,999,999
-BREAK ON TABLESPACE_NAME SKIP 2 ON FILE_ID SKIP 1
-SET LINESIZE 78
-SET PAGESIZE 41
-SET NEWPAGE 0
-SPOOL My_Directory\FREESPACE.lst
-SELECT TABLESPACE_NAME, FILE_ID, BLOCK_ID, BLOCKS,
-TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
-FROM DBA_FREE_SPACE
-ORDER BY TABLESPACE_NAME, FILE_ID, BLOCK_ID;
-SPOOL OFF
-
+     '''
+     REM Free Space Listing for Tablespaces in EXAMPLE Database
+     REM Script File Name: My_Directory\FREESPACE.sql
+     REM Spool File Name My_Directory\FREESPACE.lst
+     REM Author: NAME
+     REM Date Created: DATE
+     REM Purpose: Information on free space extents in all
+     REM tablespaces in EXAMPLE database
+     REM
+     REM
+     COLUMN TODAY NEW_VALUE xTODAY NOPRINT FORMAT A1 TRUNC
+     TTITLE LEFT xTODAY -
+     RIGHT 'Page ' FORMAT 999 SQL.PNO -
+     CENTER 'Free Space List - EXAMPLE Database ' SKIP 4
+     BTITLE 'Script File: My_Directory\FREESPACE.sql|Spool File:
+     My_Directory\FREESPACE.lst'
+     COLUMN TABLESPACE_NAME HEADING 'Tablespace|Name' FORMAT A15
+     COLUMN FILE_ID HEADING 'File ID' FORMAT 999
+     COLUMN BLOCK_ID HEADING 'Block ID' FORMAT 999999999
+     COLUMN BLOCKS HEADING 'Total|Blocks' FORMAT 999,999,999
+     BREAK ON TABLESPACE_NAME SKIP 2 ON FILE_ID SKIP 1
+     SET LINESIZE 78
+     SET PAGESIZE 41
+     SET NEWPAGE 0
+     SPOOL My_Directory\FREESPACE.lst
+     SELECT TABLESPACE_NAME, FILE_ID, BLOCK_ID, BLOCKS,
+     TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
+     FROM DBA_FREE_SPACE
+     ORDER BY TABLESPACE_NAME, FILE_ID, BLOCK_ID;
+     SPOOL OFF
+     '''
