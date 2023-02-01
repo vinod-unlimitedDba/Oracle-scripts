@@ -332,14 +332,14 @@ Script for Listing Tablespaces with Extent Information
 
 ##### Status of Free Space in Tablespaces
 
-  SET LINESIZE 100
-  SET PAGESIZE 41
-  SET NEWPAGE 0
-  SELECT TABLESPACE_NAME TABLESPACE, ROUND (SUM (BYTES) / 1048576)
-  "Free Space in MB",
-  ROUND (MAX (BYTES) / 1048576) "Largest Contiguous Chunk in MB"
-  FROM DBA_FREE_SPACE
-  GROUP BY TABLESPACE_NAME;
+       SET LINESIZE 100
+       SET PAGESIZE 41
+       SET NEWPAGE 0
+       SELECT TABLESPACE_NAME TABLESPACE, ROUND (SUM (BYTES) / 1048576)
+       "Free Space in MB",
+       ROUND (MAX (BYTES) / 1048576) "Largest Contiguous Chunk in MB"
+       FROM DBA_FREE_SPACE
+       GROUP BY TABLESPACE_NAME;
 
 
 ##### script for  Segments Unable to Extend
