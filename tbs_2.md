@@ -255,7 +255,7 @@ Script for Listing Tablespaces with Extent Information
       ORDER BY TABLE_NAME, CONSTRAINT_NAME;
       SPOOL OFF
 
-##### Script for Listing Users of SYSTEM Tablespace
+##### Script for Listing Users using SYSTEM Tablespace
 
     REM SYSTEM tablespace used by users
     REM Script File Name: My_Directory\SYSTEM_User_Objects.sql
@@ -288,49 +288,49 @@ Script for Listing Tablespaces with Extent Information
     dba_users.TEMPORARY_TABLESPACE = 'SYSTEM') and
     dba_users.USERNAME not in ('SYS', 'SYSTEM');
     spool off
-    
-   REM Used Space Extent Map for EXAMPLE Database
-   REM Script File Name: My_Directory\extent_contiguity.sql
-   REM Spool File Name: My_Directory \extent_contiguity.lst
-   REM Author: NAME
-   REM Date Created: DATE
-   REM Purpose: For each segment, list all its extents
-   REM by Extent_ID REM and Block_ID
-   REM Note: Segment = Table, Index
-   REM
+ 
+##### Used Space Extent Map
+ 
+             REM Used Space Extent Map for EXAMPLE Database
+             REM Script File Name: My_Directory\extent_contiguity.sql
+             REM Spool File Name: My_Directory \extent_contiguity.lst
+             REM Author: NAME
+             REM Date Created: DATE
+             REM Purpose: For each segment, list all its extents
+             REM by Extent_ID REM and Block_ID
+             REM Note: Segment = Table, Index
+             REM
+             COLUMN TODAY NEW_VALUE xTODAY NOPRINT FORMAT A1 TRUNC
+             TTITLE LEFT xTODAY -
+             RIGHT 'Page ' FORMAT 999 SQL.PNO -
+             CENTER ' Used Space Extent Map - EXAMPLE Database' SKIP 4
+             BTITLE 'Script File: My_Directory\ extent_contiguity.sql|
+             Spool File: My_Directory\ extent_contiguity.lst'
+             COLUMN SEGMENT_NAME HEADING 'Segment|Name' FORMAT A25
+             COLUMN SEGMENT_TYPE HEADING 'Segment|Type' FORMAT A8
+             COLUMN EXTENT_ID HEADING 'Ext|ID' FORMAT 999
+             COLUMN BLOCK_ID HEADING 'Block|ID' FORMAT 99999
+             COLUMN EXTENTS HEADING 'Ext' FORMAT 999
+             COLUMN BLOCKS HEADING 'Blocks' FORMAT 999,999
+             BREAK ON SEGMENT_NAME SKIP 0 ON SEGMENT_TYPE SKIP 0 -
+             ON EXTENTS SKIP 0
+             SET LINESIZE 78
+             SET PAGESIZE 41
+             SET NEWPAGE 0
+             SPOOL My_Directory\extent_contiguity.lst
+             SELECT a.SEGMENT_NAME, a.SEGMENT_TYPE, EXTENTS, EXTENT_ID,
+             Block_ID, b.BLOCKS,
+             TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
+             FROM DBA_SEGMENTS a, DBA_EXTENTS b
+             WHERE
+             a.SEGMENT_NAME = b.SEGMENT_NAME AND
+             a.SEGMENT_TYPE = b.SEGMENT_TYPE AND
+             a.TABLESPACE_NAME != 'SYSTEM' AND
+             a.SEGMENT_NAME NOT LIKE '%$%'
+             ORDER BY a.SEGMENT_NAME, EXTENT_ID;
+             SPOOL OFF
 
-   COLUMN TODAY NEW_VALUE xTODAY NOPRINT FORMAT A1 TRUNC
-   TTITLE LEFT xTODAY -
-   RIGHT 'Page ' FORMAT 999 SQL.PNO -
-   CENTER ' Used Space Extent Map - EXAMPLE Database' SKIP 4
-   BTITLE 'Script File: My_Directory\ extent_contiguity.sql|
-   Spool File: My_Directory\ extent_contiguity.lst'
-   COLUMN SEGMENT_NAME HEADING 'Segment|Name' FORMAT A25
-   COLUMN SEGMENT_TYPE HEADING 'Segment|Type' FORMAT A8
-   COLUMN EXTENT_ID HEADING 'Ext|ID' FORMAT 999
-   COLUMN BLOCK_ID HEADING 'Block|ID' FORMAT 99999
-   COLUMN EXTENTS HEADING 'Ext' FORMAT 999
-   COLUMN BLOCKS HEADING 'Blocks' FORMAT 999,999
-   BREAK ON SEGMENT_NAME SKIP 0 ON SEGMENT_TYPE SKIP 0 -
-   ON EXTENTS SKIP 0
-   SET LINESIZE 78
-   SET PAGESIZE 41
-   SET NEWPAGE 0
-   SPOOL My_Directory\extent_contiguity.lst
-   SELECT a.SEGMENT_NAME, a.SEGMENT_TYPE, EXTENTS, EXTENT_ID,
-   Block_ID, b.BLOCKS,
-   TO_CHAR (SysDate, 'fmMonth ddth, YYYY') TODAY
-   FROM DBA_SEGMENTS a, DBA_EXTENTS b
-   WHERE
-   a.SEGMENT_NAME = b.SEGMENT_NAME AND
-   a.SEGMENT_TYPE = b.SEGMENT_TYPE AND
-   a.TABLESPACE_NAME != 'SYSTEM' AND
-   a.SEGMENT_NAME NOT LIKE '%$%'
-   ORDER BY a.SEGMENT_NAME, EXTENT_ID;
-   SPOOL OFF
-
-##### : Status of Free Space in Tablespaces
-
+##### Status of Free Space in Tablespaces
 
   SET LINESIZE 100
   SET PAGESIZE 41
