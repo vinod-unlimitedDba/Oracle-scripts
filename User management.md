@@ -1,6 +1,5 @@
 
 ##### User particular info
-========================
 		set linesize 2000 verify off
 		Set page 1000
 		col username  format a15
@@ -19,7 +18,7 @@
 
 
 ##### Script for login failed if audit is enabled
-==========================
+	
 	set pagesize 200
 	set linesize 150
 	column os_username format a15
@@ -33,7 +32,7 @@
 	order by timestamp ; 
 
 ##### script Show all tablespaces used by a user
-========================================
+
 	select tablespace_name, ceil(sum(bytes) / 1024 / 1024/1024) "GB"
 	from dba_extents where owner like '&user_id' group by tablespace_name
 	order by tablespace_name
@@ -41,19 +40,17 @@
 
 
 ##### GET ALL USERS  NOT DEFAULTS
-==============================
 
 Set lines 500 pages 1000
 Col  username for a35
 SELECT username   FROM dba_users  WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
 
 ##### Dynamic script for non default users
-=====================================
 
 	SET HEADING OFF
 	spool /export/home/oracle/dropuser.sql
 
-    SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS
+     SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS
      WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
     /
 ######
@@ -63,7 +60,6 @@ SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS where username not in
 ```
 
 ##### User Info along with what roles granted
-====================================
 		Set linesize 5000 pagesize 50000
 		col username format a23 heading 'Username'             justify c
 		col role     format a30 heading 'Role (admin,grant)'   justify c
@@ -83,8 +79,7 @@ SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS where username not in
 		order by   1,2,3,4
 		/
 
-###### what roles, system privilege, table pri, on which cloumn assigned for the user
-============================ GOOD ONE ==============================================
+###### what roles, system privilege, table pri, on which cloumn assigned for the user ========== Good one
 
 		set line 200 pages 200
 		column grantee for a7
@@ -112,13 +107,13 @@ SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS where username not in
 
 
 ###### what roles assigned to users
-================================
-select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FROM sys.dba_users usr WHERE usr.created > (SELECT created FROM sys.v_$database));
+
+	select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FROM sys.dba_users usr WHERE usr.created > (SELECT created FROM 	     sys.v_$database));
 
 
 ##### Dynamic scripts to get what privs given for all roles 
-===========================================================
-	set long 20000 longchunksize 20000 pagesize 0 linesize 1000 feedback off verify off trimspool on
+
+        set long 20000 longchunksize 20000 pagesize 0 linesize 1000 feedback off verify off trimspool on
 
 ###### 
 
@@ -128,8 +123,8 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 
 
 ###### GIVES DETAILS OF ALL USER AND ROLES
-========================================
-	col username  format a15
+
+        col username  format a15
 	col "default ts"   format a15
 	col "temporary ts" format a15
 	col roles format a25
@@ -147,7 +142,7 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 	order by username;
 
 ##### User role and priv for particular user
-=================================================
+
 
 		set lines 110 pages 1000 verify off
 		col GRANTEE for a30
@@ -178,7 +173,6 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 
 
 ###### List  locked user in the database  Get a list of Locked users 
- =========================
 
  
 	 col USERNAME for a20
@@ -212,7 +206,7 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 
 
 ##### user and roles
-================
+
 	COL "USER,HIS ROLES AND PRIVILEGES" FORMAT a100
 	set linesize 300 pages 1000
 	SELECT
@@ -233,7 +227,7 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 	CONNECT BY grantee = PRIOR granted_role;   
  
 ###### PROMPT Table Privileges granted to a user through roles
-=========================================================
+
 	Set linesize 1000 pagesize 1000
 	Col granted_role for a20
 	Col owner for a20
@@ -251,7 +245,7 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 	WHERE granted_role=grantee;
 
 ##### PROMPT System Privileges assigned to a user through roles
-==================================================================
+
 	SELECT granted_role, privilege
 	FROM ( SELECT granted_role 
 	     FROM dba_role_privs WHERE grantee=UPPER('&username')
@@ -266,8 +260,8 @@ select granted_role from DBA_ROLE_PRIVS where grantee in (SELECT usr.username FR
 
 
 ##### List of privilege
-==============
-		select
+
+	select
 	  lpad(' ', 2*level) || granted_role "User, his roles and privileges"
 	from
 	  (
