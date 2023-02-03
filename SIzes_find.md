@@ -319,7 +319,9 @@ end;
      where a.TABLE_NAME=b.SEGMENT_NAME and a.owner=b.owner
      order by SIZE_GB desc;============== table 
 
-     select e.*, d.owner index_owner,d.index_name, d.index_type, sum(g.bytes/1024/1024/1024) index_size_gb, d.TABLESPACE_NAME index_tbs from dba_segments g, dba_indexes d
+  ######                     
+                      
+     select e.*, d.owner index_owner,d.index_name, d.index_type, sum(g.bytes/1024/1024/1024) index_size_gb, d.TABLESPACE_NAME index_tbs from         dba_segments g, dba_indexes d
      right outer join 
       (select * from (
      select a.owner tabown, a.TABLE_NAME, b.SIZE_GB, ((a.BLOCKS*8192/1024/1024/1024)-(a.NUM_ROWS*AVG_ROW_LEN/1024/1024/1024)) as ACTUAL_GB, 
