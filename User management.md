@@ -153,7 +153,7 @@ change at define usercheck to ur  username/Role
 		col pv for a75 head 'PRIVILEGE OR ROLE'
 		break on role on type skip 1
 
-		define usercheck = ':DAOTRG'
+		define usercheck = '&DAOTRG'
 
 		select grantee, 'ROL' type, granted_role pv
 		from dba_role_privs where grantee = '&usercheck' union
