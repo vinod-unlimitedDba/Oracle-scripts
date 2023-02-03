@@ -145,15 +145,15 @@ SELECT 'DROP USER '||USERNAME||' CASCADE ;' FROM DBA_USERS where username not in
 
 ##### User role and priv for particular user
 
-change at define usercheck to ur  username/Role 
+first define user to ur  username/Role 
+
+   ##### define usercheck='user/ROle'
 
 		set lines 110 pages 1000 verify off
 		col GRANTEE for a30
 		col role for a16
 		col pv for a75 head 'PRIVILEGE OR ROLE'
 		break on role on type skip 1
-
-		define usercheck = '&DAOTRG'
 
 		select grantee, 'ROL' type, granted_role pv
 		from dba_role_privs where grantee = '&usercheck' union
