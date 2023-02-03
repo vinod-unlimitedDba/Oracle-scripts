@@ -9,6 +9,7 @@ DB SIZE
           ( select sum(BLOCK_SIZE*FILE_SIZE_BLKS)/1024/1024/1024 controlfile_size from v$controlfile) "Size in GB"
           From dual
           /
+#####
 
           col "Database Size" format a20
           col "Free space" format a20
