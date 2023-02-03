@@ -41,9 +41,9 @@
 
 ##### GET ALL USERS  NOT DEFAULTS
 
-Set lines 500 pages 1000
-Col  username for a35
-SELECT username   FROM dba_users  WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
+	Set lines 500 pages 1000
+	Col  username for a35
+	SELECT username   FROM dba_users  WHERE TRUNC(created) > (SELECT MIN(TRUNC(created)) FROM dba_users);
 
 ##### Dynamic script for non default users
 
