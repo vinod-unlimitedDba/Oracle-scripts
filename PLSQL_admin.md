@@ -107,6 +107,17 @@ To kill several sessions of a user, following PLSQL block can be used
 	/
 
 
+###### To check object DDL's for specific typye 
+'''
+ begin
+		  FOR r IN (SELECT owner,object_name,object_type from dba_objects where owner='ECDEV1' and object_type='TYPE')
+		  loop 
+		    EXECUTE IMMEDIATE 'SELECT DBMS_METADATA.GET_DDL('''|| r.object_type ||''','''|| r.object_name ||''','''|| r.owner ||''') FROM DUAL';		    
+		  end loop; 
+		 DBMS_OUTPUT.PUT_LINE('');  
+		END;
+		/  
+'''
 
 
 
