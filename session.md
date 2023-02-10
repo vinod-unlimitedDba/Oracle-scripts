@@ -1,10 +1,10 @@
 To check which sessions are active in the database
 ================================================
-select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
-and status ='ACTIVE' and module is not null;
+    select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
+    and status ='ACTIVE' and module is not null;
 
-             RAC
-             =======
+   ##### RAC
+           
              select username,osuser,sid,serial#, program,sql_hash_value,module from gv$session 
              where username is not null
              and status ='ACTIVE' and module is not null;
@@ -15,77 +15,77 @@ REM: NOTE: PLEASE TEST THIS SCRIPT BEFORE USE.
 REM: Author will not be responsible for any damage that may be cause by this script.
 REM:*****************************************
 
-SELECT
-DBA_USERS.USERNAME USERNAME,
-DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED') STATUS,
-NVL(OSUSER, '-') OSUSER,
-NVL(TERMINAL,'-') TERMINAL,
-SUM(DECODE(V$SESSION.USERNAME, NULL, 0,1)) SESSIONS
-FROM
-DBA_USERS, V$SESSION WHERE DBA_USERS.USERNAME = V$SESSION.USERNAME (+)
-GROUP BY DBA_USERS.USERNAME,
-DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED'),
-OSUSER, TERMINAL ORDER BY 1 ;
+        SELECT
+        DBA_USERS.USERNAME USERNAME,
+        DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED') STATUS,
+        NVL(OSUSER, '-') OSUSER,
+        NVL(TERMINAL,'-') TERMINAL,
+        SUM(DECODE(V$SESSION.USERNAME, NULL, 0,1)) SESSIONS
+        FROM
+        DBA_USERS, V$SESSION WHERE DBA_USERS.USERNAME = V$SESSION.USERNAME (+)
+        GROUP BY DBA_USERS.USERNAME,
+        DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED'),
+        OSUSER, TERMINAL ORDER BY 1 ;
 
-PROMPT
-PROMPT
-PROMPT NUMBER OF CONNECTED SESSIONS
-PROMPT =============================
-select
-       substr(a.spid,1,9) pid,
-       substr(b.sid,1,5) sid,
-       status,
-       TO_CHAR(logon_time,'DD-Mon-YYYY HH24:MI:SS'),
-       substr(b.serial#,1,5) ser#,
-       substr(b.machine,1,6) box,
-       substr(b.username,1,10) username,
-       substr(b.osuser,1,8) os_user,
-       substr(b.program,1,30) program
-from v$session b, v$process a
-where
-b.paddr = a.addr
-and type='USER'
-order by status;
+        PROMPT
+        PROMPT
+ ####   PROMPT NUMBER OF CONNECTED SESSIONS only appliation user not sys
+        PROMPT =============================
+        select
+               substr(a.spid,1,9) pid,
+               substr(b.sid,1,5) sid,
+               status,
+               TO_CHAR(logon_time,'DD-Mon-YYYY HH24:MI:SS'),
+               substr(b.serial#,1,5) ser#,
+               substr(b.machine,1,6) box,
+               substr(b.username,1,10) username,
+               substr(b.osuser,1,8) os_user,
+               substr(b.program,1,30) program
+        from v$session b, v$process a
+        where
+        b.paddr = a.addr
+        and type='USER'
+        order by status;
 
 
 Script to see particular session waitevent
 ===============================================
-select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
+  select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
 
 To list all User Sessions not Background, use following scripts. 
 This script will list you just only User type sessions and their detais.
 ============================================================================================
-select * FROM gv$session s, gv$process p
-WHERE s.paddr = p.addr(+)
-and s.TYPE ='USER' and s.username!='SYS';
+    select * FROM gv$session s, gv$process p
+    WHERE s.paddr = p.addr(+)
+    and s.TYPE ='USER' and s.username!='SYS';
 
 You can list how many Active and Inactive User sessions are in the Oracle database with following script.
 ==================================================================================================
-select count(*) FROM gv$session s, gv$process p
-WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS';
+    select count(*) FROM gv$session s, gv$process p
+    WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS';
 
 You can list only Active User sessions without sys user with following script
 ===========================================================================
-select count(*) FROM gv$session s, gv$process p
-WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE';
+  select count(*) FROM gv$session s, gv$process p
+  WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE';
  
 You can list only Inactive User sessions without sys user with following script
 =====================================================================
-select count(*) FROM gv$session s, gv$process p
-WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='INACTIVE';
+    select count(*) FROM gv$session s, gv$process p
+    WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='INACTIVE';
 
 You can list all user sessions which are ACTIVE state more than 600 Second with following script.
 ===============================================================================================
-select count(*) FROM gv$session s, gv$process p
-WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE' and last_call_et > 600
-/
+    select count(*) FROM gv$session s, gv$process p
+    WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE' and last_call_et > 600
+    /
 
 Session details associated with SID and Event waiting for
 ---------------------------------------------------------
-set pages 50000 lines 32767
-col EVENT for a40
+      set pages 50000 lines 32767
+      col EVENT for a40
 
-select a.sid, a.serial#, a.status, a.program, b.event,to_char(a.logon_time, 'dd-mon-yy hh24:mi') LOGON_TIME,to_char(Sysdate, 'dd-mon-yy-hh24:mi') CURRENT_TIME, (a.last_call_et/3600) "Hrs connected" from v$session a,v$session_wait b where a.sid in(&SIDs) and a.sid=b.sid order by 8;
+      select a.sid, a.serial#, a.status, a.program, b.event,to_char(a.logon_time, 'dd-mon-yy hh24:mi') LOGON_TIME,to_char(Sysdate, 'dd-mon-yy-hh24:mi') CURRENT_TIME,   (a.last_call_et/3600) "Hrs connected" from v$session a,v$session_wait b where a.sid in(&SIDs) and a.sid=b.sid order by 8;
 
 
 Detail report user session
