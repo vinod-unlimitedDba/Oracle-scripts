@@ -33,7 +33,8 @@ REM:*****************************************
 
         PROMPT
         PROMPT
- ####   PROMPT NUMBER OF CONNECTED SESSIONS only appliation user not sys
+        PROMPT NUMBER OF CONNECTED SESSIONS only appliation user not sys
+        ------------
         PROMPT =============================
  ---------------       
         
@@ -187,7 +188,7 @@ Script to how active transaction in the database
         /
 
             RAC
-            ===============
+           ------- 
              col RBS format a15 trunc
              col SID format 9999
              col USER format a15 trunc
