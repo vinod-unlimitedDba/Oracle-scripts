@@ -1,5 +1,5 @@
 To check which sessions are active in the database
-================================================
+------------------------------------------------------
     select username,osuser,sid,serial#, program,sql_hash_value,module from v$session where username is not null
     and status ='ACTIVE' and module is not null;
 
@@ -8,6 +8,8 @@ To check which sessions are active in the database
              select username,osuser,sid,serial#, program,sql_hash_value,module from gv$session 
              where username is not null
              and status ='ACTIVE' and module is not null;
+
+
 
 REM: Script to Get Os user name with terminal name
 REM:*****************************************
@@ -49,33 +51,32 @@ REM:*****************************************
 
 
 Script to see particular session waitevent
-===============================================
+-------------------------------------------------
   select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
 
-To list all User Sessions not Background, use following scripts. 
-This script will list you just only User type sessions and their detais.
-============================================================================================
+To list all User Sessions not Background, use following scripts.This script will list you just only User type sessions and their detais.
+-------------------------------------------------
     select * FROM gv$session s, gv$process p
     WHERE s.paddr = p.addr(+)
     and s.TYPE ='USER' and s.username!='SYS';
 
 You can list how many Active and Inactive User sessions are in the Oracle database with following script.
-==================================================================================================
+-------------------------------------------------
     select count(*) FROM gv$session s, gv$process p
     WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS';
 
 You can list only Active User sessions without sys user with following script
-===========================================================================
+-------------------------------------------------
   select count(*) FROM gv$session s, gv$process p
   WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE';
  
 You can list only Inactive User sessions without sys user with following script
-=====================================================================
+-------------------------------------------------
     select count(*) FROM gv$session s, gv$process p
     WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='INACTIVE';
 
 You can list all user sessions which are ACTIVE state more than 600 Second with following script.
-===============================================================================================
+-------------------------------------------------
     select count(*) FROM gv$session s, gv$process p
     WHERE s.paddr = p.addr(+) and s.TYPE ='USER' and s.username!='SYS' and status='ACTIVE' and last_call_et > 600
     /
@@ -89,8 +90,7 @@ Session details associated with SID and Event waiting for
 
 
 Detail report user session
-===================================
-
+-------------------------------------------------
 COL orauser HEA "   Oracle User   " FOR a17 TRUNC
 COL osuser HEA " O/S User " FOR a10 TRUNC
 COL ssid HEA "Sid" FOR a4
@@ -125,30 +125,29 @@ ORDER BY
 /
 
 Total cursors open, by session
-======================================
+-------------------------------------------------
 select a.value, s.username, s.sid, s.serial# from gv$sesstat a,gv$statname b, gv$session s
 where a.statistic# = b.statistic#  and s.sid=a.sid and b.name = 'opened cursors current' order by 1;
 
 
 KIlling inactive session at os level
-=====================================
+-------------------------------------------------
 
-set pagesize 1200;
-set linesize 1200;
-select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr and s.sid in (select sid from v$session where status like 'INACTIVE' and logon_time < sysdate-0.33 and action like 'FRM:%');
+        set pagesize 1200;
+        set linesize 1200;
+        select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr and s.sid in (select sid from v$session where status like 'INACTIVE' and   logon_time < sysdate-0.33 and action like 'FRM:%');
 
-       RAC
-       ==========
+   ##### RAC
+      
           set pagesize 1200;
           set linesize 1200;
           select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and           logon_time < sysdate-0.33 and action like 'FRM:%');
 
 
 Kill session for sql_id
-===========================
-SELECT 'alter system kill session ' ||''''||SID||','||SERIAL#||' immediate ;'
-FROM v$session
-WHERE sql_id='&sql_id'; 
+-------------------------------------------------
+        SELECT 'alter system kill session ' ||''''||SID||','||SERIAL#||' immediate ;'FROM v$session
+        WHERE sql_id='&sql_id'; 
 
 --- FOR RAC  select 'alter system kill session ' ||''''||SID||','||SERIAL#||',@'||inst_id||''''||' immediate ;'  from gv$session where sql_id='&sql_id'
 
@@ -156,28 +155,28 @@ WHERE sql_id='&sql_id';
 ===================================================================
 Notification Text: The following list of SQL statements have been running for over 60 minutes.
 SQL Statement:
-===============================================================
-select 'SID:'||s.sid||', Serial#:'||s.serial#||', Username:'||s.username||', Machine:'||s.machine||
-       ', Program:'||s.program||', HashValue:'||s.sql_hash_value||', SQL Text:'||nvl(substr(sql.sql_text,1,40),'Unknown SQL'), last_call_et
-from v$session s
-left outer join v$sql sql on sql.hash_value=s.sql_hash_value and sql.address=s.sql_address
-where s.status='ACTIVE'
-and s.type <> 'BACKGROUND'
-and last_call_et >= 3600
+-------------------------------------------------
+        select 'SID:'||s.sid||', Serial#:'||s.serial#||', Username:'||s.username||', Machine:'||s.machine||
+               ', Program:'||s.program||', HashValue:'||s.sql_hash_value||', SQL Text:'||nvl(substr(sql.sql_text,1,40),'Unknown SQL'), last_call_et
+        from v$session s
+        left outer join v$sql sql on sql.hash_value=s.sql_hash_value and sql.address=s.sql_address
+        where s.status='ACTIVE'
+        and s.type <> 'BACKGROUND'
+        and last_call_et >= 3600;
 
 
 
 
 Script to how active transaction in the database
-====================================================
-col RBS format a15 trunc
-col SID format 9999
-col USER format a15 trunc
-col COMMAND format a60 trunc
-col status format a8 trunc
-select r.name "RBS", s.sid, s.serial#, s.username "USER", t.status,
-t.cr_get, t.phy_io, t.used_ublk, t.noundo, substr(s.program, 1, 78) "COMMAND" from v$session s, v$transaction t, v$rollname r where t.addr = s.taddr and t.xidusn = r.usn order by t.cr_get, t.phy_io
-/
+-------------------------------------------------
+        col RBS format a15 trunc
+        col SID format 9999
+        col USER format a15 trunc
+        col COMMAND format a60 trunc
+        col status format a8 trunc
+        select r.name "RBS", s.sid, s.serial#, s.username "USER", t.status,
+        t.cr_get, t.phy_io, t.used_ublk, t.noundo, substr(s.program, 1, 78) "COMMAND" from v$session s, v$transaction t, v$rollname r where t.addr = s.taddr and t.xidusn = r.usn order by t.cr_get, t.phy_io
+        /
 
             RAC
             ===============
