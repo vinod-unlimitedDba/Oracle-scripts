@@ -10,13 +10,13 @@ To check which sessions are active in the database
              and status ='ACTIVE' and module is not null;
 
 
-
+----------------------
 REM: Script to Get Os user name with terminal name
 REM:*****************************************
 REM: NOTE: PLEASE TEST THIS SCRIPT BEFORE USE.
 REM: Author will not be responsible for any damage that may be cause by this script.
 REM:*****************************************
-
+-----------------------
         SELECT
         DBA_USERS.USERNAME USERNAME,
         DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED') STATUS,
@@ -28,11 +28,16 @@ REM:*****************************************
         GROUP BY DBA_USERS.USERNAME,
         DECODE(V$SESSION.USERNAME, NULL, 'NOT CONNECTED', 'CONNECTED'),
         OSUSER, TERMINAL ORDER BY 1 ;
+        
+ --------------
 
         PROMPT
         PROMPT
  ####   PROMPT NUMBER OF CONNECTED SESSIONS only appliation user not sys
         PROMPT =============================
+ ---------------       
+        
+        
         select
                substr(a.spid,1,9) pid,
                substr(b.sid,1,5) sid,
@@ -52,7 +57,7 @@ REM:*****************************************
 
 Script to see particular session waitevent
 -------------------------------------------------
-  select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
+         select sid,seq#,wait_time,event,seconds_in_wait,state from gv$session_wait where sid in (&sid);
 
 To list all User Sessions not Background, use following scripts.This script will list you just only User type sessions and their detais.
 -------------------------------------------------
@@ -91,43 +96,43 @@ Session details associated with SID and Event waiting for
 
 Detail report user session
 -------------------------------------------------
-COL orauser HEA "   Oracle User   " FOR a17 TRUNC
-COL osuser HEA " O/S User " FOR a10 TRUNC
-COL ssid HEA "Sid" FOR a4
-COL sserial HEA "Serial#" FOR a7
-COL ospid HEA "O/S Pid" FOR a7
-COL slogon HEA "  Logon Time  " FOR a14
-COL sstat HEA "Status" FOR a6
-COL auth HEA "Auth" FOR a4
-COL conn HEA "Con" FOR a3
- 
-SELECT
-   ' '||NVL( s.username, '    ????    ' ) orauser, 
-   ' '||s.osuser osuser, 
-   LPAD( s.sid, 4 ) ssid, LPAD( s.serial#, 6 ) sserial,
-   LPAD( p.spid, 6 ) ospid, 
-   INITCAP( LOWER( TO_CHAR( logon_time, 'MONDD HH24:MI:SS' ) ) ) slogon,
-   DECODE( s.status, 'ACTIVE', ' Busy ', 'INACTIVE', ' Idle ', 'KILLED', ' Kill ', '  ??  ' ) sstat, 
-   DECODE( sc.authentication_type, 'DATABASE', ' DB ', 'OS', ' OS ', ' ?? ' ) auth,
-   DECODE( s.server, 'DEDICATED', 'Dir', 'NONE', 'Mts', 'SHARED', 'Mts', '???' ) conn
-FROM
-   v$session s, v$process p, 
-   (
-   SELECT
-      DISTINCT sid, authentication_type
-   FROM
-      v$session_connect_info
-   ) sc
-WHERE
-   s.paddr = p.addr AND s.sid = sc.sid
-ORDER BY
-   s.status,s.sid
-/
+            COL orauser HEA "   Oracle User   " FOR a17 TRUNC
+            COL osuser HEA " O/S User " FOR a10 TRUNC
+            COL ssid HEA "Sid" FOR a4
+            COL sserial HEA "Serial#" FOR a7
+            COL ospid HEA "O/S Pid" FOR a7
+            COL slogon HEA "  Logon Time  " FOR a14
+            COL sstat HEA "Status" FOR a6
+            COL auth HEA "Auth" FOR a4
+            COL conn HEA "Con" FOR a3
+
+            SELECT
+               ' '||NVL( s.username, '    ????    ' ) orauser, 
+               ' '||s.osuser osuser, 
+               LPAD( s.sid, 4 ) ssid, LPAD( s.serial#, 6 ) sserial,
+               LPAD( p.spid, 6 ) ospid, 
+               INITCAP( LOWER( TO_CHAR( logon_time, 'MONDD HH24:MI:SS' ) ) ) slogon,
+               DECODE( s.status, 'ACTIVE', ' Busy ', 'INACTIVE', ' Idle ', 'KILLED', ' Kill ', '  ??  ' ) sstat, 
+               DECODE( sc.authentication_type, 'DATABASE', ' DB ', 'OS', ' OS ', ' ?? ' ) auth,
+               DECODE( s.server, 'DEDICATED', 'Dir', 'NONE', 'Mts', 'SHARED', 'Mts', '???' ) conn
+            FROM
+               v$session s, v$process p, 
+               (
+               SELECT
+                  DISTINCT sid, authentication_type
+               FROM
+                  v$session_connect_info
+               ) sc
+            WHERE
+               s.paddr = p.addr AND s.sid = sc.sid
+            ORDER BY
+               s.status,s.sid
+            /
 
 Total cursors open, by session
 -------------------------------------------------
-select a.value, s.username, s.sid, s.serial# from gv$sesstat a,gv$statname b, gv$session s
-where a.statistic# = b.statistic#  and s.sid=a.sid and b.name = 'opened cursors current' order by 1;
+        select a.value, s.username, s.sid, s.serial# from gv$sesstat a,gv$statname b, gv$session s
+        where a.statistic# = b.statistic#  and s.sid=a.sid and b.name = 'opened cursors current' order by 1;
 
 
 KIlling inactive session at os level
@@ -137,8 +142,9 @@ KIlling inactive session at os level
         set linesize 1200;
         select 'kill -9 ' || p.spid from v$session s, v$process p where s.paddr = p.addr and s.sid in (select sid from v$session where status like 'INACTIVE' and   logon_time < sysdate-0.33 and action like 'FRM:%');
 
-   ##### RAC
-      
+--------
+ ##### RAC
+ ---------     
           set pagesize 1200;
           set linesize 1200;
           select 'kill -9 ' || p.spid from gv$session s, gv$process p where s.paddr = p.addr and s.sid in (select sid from gv$session where status like 'INACTIVE' and           logon_time < sysdate-0.33 and action like 'FRM:%');
@@ -149,9 +155,11 @@ Kill session for sql_id
         SELECT 'alter system kill session ' ||''''||SID||','||SERIAL#||' immediate ;'FROM v$session
         WHERE sql_id='&sql_id'; 
 
---- FOR RAC  select 'alter system kill session ' ||''''||SID||','||SERIAL#||',@'||inst_id||''''||' immediate ;'  from gv$session where sql_id='&sql_id'
-
-
+----------
+ FOR RAC  
+------------
+        select 'alter system kill session ' ||''''||SID||','||SERIAL#||',@'||inst_id||''''||' immediate ;'  from gv$session where sql_id='&sql_id';
+        
 ===================================================================
 Notification Text: The following list of SQL statements have been running for over 60 minutes.
 SQL Statement:
