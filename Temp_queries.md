@@ -110,10 +110,11 @@ find out which SQL statement is using up space in a sort segment.
                FROM v$session s, v$tempseg_usage u
                WHERE s.saddr=u.session_addr
                order by u.blocks;
---------------
+
+#####
 --BTW, v$sort_usage is same as v$tempseg_usage.
 --However, the tempspace can be used by any open cursor in that session. The current SQL is not necessary the culprit. In that case, we can check it from v$sql:
------------------
+#####
 
        col hash_value for 999999999999
        select hash_value, sorts, rows_processed/executions
