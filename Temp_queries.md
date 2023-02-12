@@ -1,6 +1,6 @@
 
-space for temp
-=============
+To check avaiable space for temp tbs
+-----------------
      select tablespace_name
      ,tablespace_size/1024/1024 mb_size
      ,allocated_space/1024/1024 mb_alloc
@@ -8,16 +8,19 @@ space for temp
      from dba_temp_free_space;
 
 Block wise Check
-===========================================================
 
-   select TABLESPACE_NAME, TOTAL_BLOCKS, USED_BLOCKS, MAX_USED_BLOCKS, MAX_SORT_BLOCKS, FREE_BLOCKS from V$SORT_SEGMENT;
+-----------------
+   
+    select TABLESPACE_NAME, TOTAL_BLOCKS, USED_BLOCKS, MAX_USED_BLOCKS, MAX_SORT_BLOCKS, FREE_BLOCKS from V$SORT_SEGMENT;
 
+#####
+    
     select sum(free_blocks) from gv$sort_segment where tablespace_name = 'TEMP';
 
 
 To check instance-wise total allocated, total used TEMP for both rac and non-rac
-===========================================================
-
+-----------------
+             
              set lines 152
              col FreeSpaceGB format 999.999
              col UsedSpaceGB format 999.999
@@ -35,8 +38,9 @@ To check instance-wise total allocated, total used TEMP for both rac and non-rac
 
 
 Viewing SQL That Is Consuming Temporary Space
-===========================================
-         SELECT s.sid, s.serial#, s.username
+-----------------         
+
+          SELECT s.sid, s.serial#, s.username
          ,p.spid, s.module, p.program
          ,SUM(su.blocks) * tbsp.block_size/1024/1024 mb_used
          ,su.tablespace
@@ -55,7 +59,7 @@ Viewing SQL That Is Consuming Temporary Space
 
 
 Track Who is Currently using the Temp and how many statments
-======================================================
+-----------------      
       SELECT b.tablespace, ROUND(((b.blocks*p.value)/1024/1024),2)||'M' "SIZE",
       a.sid||','||a.serial# SID_SERIAL, a.username, a.program
       FROM sys.v_$session a, sys.v_$sort_usage b, sys.v_$parameter p
@@ -63,7 +67,8 @@ Track Who is Currently using the Temp and how many statments
       ORDER BY b.tablespace, b.blocks;
 
 find out which SQL statement is using up space in a sort segment.
-==========================================
+-----------------
+
         select s.sid || ',' || s.serial# sid_serial, s.username,
         o.blocks * t.block_size / 1024 / 1024 mb_used, o.tablespace,
         o.sqladdr address, h.hash_value, h.sql_text
@@ -74,8 +79,7 @@ find out which SQL statement is using up space in a sort segment.
         order by s.sid;
 
 — Temp segment usage per session along with os user
-===========================================================
-
+-----------------
         col SID_SERIAL for a15
         col MB_USED format 999999
          col SPID for a15
@@ -95,21 +99,21 @@ find out which SQL statement is using up space in a sort segment.
         ORDER BY sid_serial;
 
 — Check the sessions that use temp tablespace along with segment type
-===========================================================
+-----------------
 
-col hash_value for a40
-col tablespace for a10
-col username for a15
-set linesize 132 pagesize 1000
+          col hash_value for a40
+          col tablespace for a10
+          col username for a15
+          set linesize 132 pagesize 1000
 
-     SELECT s.sid, s.username, u.tablespace, s.sql_hash_value||'/'||u.sqlhash hash_value, u.segtype, u.contents, u.blocks
-     FROM v$session s, v$tempseg_usage u
-     WHERE s.saddr=u.session_addr
-     order by u.blocks;
-
+               SELECT s.sid, s.username, u.tablespace, s.sql_hash_value||'/'||u.sqlhash hash_value, u.segtype, u.contents, u.blocks
+               FROM v$session s, v$tempseg_usage u
+               WHERE s.saddr=u.session_addr
+               order by u.blocks;
+--------------
 --BTW, v$sort_usage is same as v$tempseg_usage.
 --However, the tempspace can be used by any open cursor in that session. The current SQL is not necessary the culprit. In that case, we can check it from v$sql:
-===========================================================
+-----------------
 
        col hash_value for 999999999999
        select hash_value, sorts, rows_processed/executions
@@ -122,9 +126,9 @@ set linesize 132 pagesize 1000
 
 
 
-Killing session using TEMP 
-================================
-        SELECT  b.TABLESPACE, a.username , a.osuser , a.program , a.status ,
+Killing session using who are using TEMP tbs
+---------------------------
+          SELECT  b.TABLESPACE, a.username , a.osuser , a.program , a.status ,
                'ALTER SYSTEM KILL SESSION '''||a.SID||','||a.SERIAL#||',@'||a.inst_ID||''' IMMEDIATE;'
             FROM gv$session a
                , gv$sort_usage b
