@@ -1,6 +1,8 @@
 
 Shirnk datafile
 **********************
+
+```
 set linesize 1000 pagesize 0 feedback off trimspool on
 with
  hwm as (
@@ -35,7 +37,11 @@ where
  bytes-hwm_bytes>1024*1024 -- resize only if at least 1MB can be reclaimed
 order by bytes-hwm_bytes desc
 /
+```
 
+#####
+
+```
 set verify off
 column file_name format a50 word_wrapped
 column smallest format 999,990 heading "Smallest|Size|Poss."
@@ -127,3 +133,4 @@ from dba_data_files a,
 where a.file_id = b.file_id(+) order by savings desc
 /
 
+```
