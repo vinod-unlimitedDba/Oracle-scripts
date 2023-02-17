@@ -107,21 +107,27 @@ To kill several sessions of a user, following PLSQL block can be used
 	/
 
 
-###### To check object DDL's for specific typye 
+-- Switch all existing users to new temp tablespace.
+	BEGIN
+	  FOR cur_user IN (SELECT username FROM dba_users WHERE temporary_tablespace = 'TEMPIMPEXP') LOOP
+	    EXECUTE IMMEDIATE 'ALTER USER ' || cur_user.username || ' TEMPORARY TABLESPACE temp';
+	  END LOOP;
+	END;
+	/
 
 
- 	begin
-		  FOR r IN (SELECT owner,object_name,object_type from dba_objects where owner='ECDEV1' and object_type='TYPE')
-		  loop 
-		    EXECUTE IMMEDIATE 'SELECT DBMS_METADATA.GET_DDL('''|| r.object_type ||''','''|| r.object_name ||''','''|| r.owner ||''') FROM 		DUAL';		    
-		  end loop; 
-		 DBMS_OUTPUT.PUT_LINE('');  
-		END;
-		/  
+##### All tables under one shcema
+     SELECT DBMS_METADATA.get_ddl ('TYPE', table_name, owner) FROM all_tables WHERE owner = UPPER('&1');
+     
+##### All index under schema
+      
+      SELECT DBMS_METADATA.GET_DDL('INDEX', INDEX_NAME, owner) FROM USER_INDEXES WHERE owner='&1';
 
+      
+     
 
-
-
+		
+ 
 
 
 
