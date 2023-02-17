@@ -116,10 +116,10 @@ To kill several sessions of a user, following PLSQL block can be used
 	/
 
 
-##### All tables under one shcema
+##### All tables DLL'S under shcema
      SELECT DBMS_METADATA.get_ddl ('TYPE', table_name, owner) FROM all_tables WHERE owner = UPPER('&1');
      
-##### All index under schema
+##### All index DDL's under schema
       
       SELECT DBMS_METADATA.GET_DDL('INDEX', INDEX_NAME, owner) FROM USER_INDEXES WHERE owner='&1';
 
