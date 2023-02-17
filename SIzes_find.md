@@ -133,10 +133,11 @@ Find SCHEMA size:
 
 Schema size of segment
 ----------------------------
+ ```  
    BREAK ON REPORT
    COMPUTE SUM LABEL TOTAL OF "Size of Each Segment in GB" ON REPORT
    select segment_type, sum(bytes/1024/1024/1024) "Size of Each Segment in GB" from dba_segments where owner='&SYS' group by segment_type order by 1;
-
+```
 
 Table size
 =====
