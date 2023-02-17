@@ -107,7 +107,7 @@ To kill several sessions of a user, following PLSQL block can be used
 	/
 
 
--- Switch all existing users to new temp tablespace.
+##### Switch all existing users to new temp tablespace.
 	BEGIN
 	  FOR cur_user IN (SELECT username FROM dba_users WHERE temporary_tablespace = 'TEMPIMPEXP') LOOP
 	    EXECUTE IMMEDIATE 'ALTER USER ' || cur_user.username || ' TEMPORARY TABLESPACE temp';
