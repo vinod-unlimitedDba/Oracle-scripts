@@ -147,12 +147,13 @@ Table size
 
 ##### 2
 
-      SELECT SUM(bytes), SUM(bytes)/1024/1024/1024 GB
+        SELECT SUM(bytes), SUM(bytes)/1024/1024/1024 GB
         FROM dba_extents     WHERE owner = '&owner'
         AND segment_name = '&table_name'
-    /
+        /
 
 ##### 3
+    
     select NUM_ROWS, BLOCKS, EMPTY_BLOCKS, AVG_SPACE, AVG_ROW_LEN, NUM_ROWS, NUM_FREELIST_BLOCKS 
     from all_tables where owner = 'DBUSR' and table_name = 'T'; 
 
@@ -163,11 +164,12 @@ How to find table size in database.
 
 To Get The Oracle Table size and index size
 --------------------------------------
-    select segment_name,TABLESPACE_NAME ,segment_type, bytes/1024/1024/1024 size_gb from dba_segments where segment_name = ‘&segment_name’ or segment_name in (select       index_name from dba_indexes where table_name=’&tablename’ and table_owner=’&owner’);
-
+ ```  
+   select segment_name,TABLESPACE_NAME ,segment_type, bytes/1024/1024/1024 size_gb from dba_segments where segment_name = ‘&segment_name’ or segment_name in (select       index_name from dba_indexes where table_name=’&tablename’ and table_owner=’&owner’);
+```
 Index size for table
 ==================
-
+```
         SELECT owner, segment_name AS table_name, NULL as index_name, SUM(bytes)/1024/1024/1024 size_mb
         FROM dba_segments
         WHERE segment_name = '&TABLE'
@@ -181,7 +183,7 @@ Index size for table
         AND i.table_name = '&TABLE'
         AND i.owner = '&OWNER'
         GROUP BY i.owner, i.table_name, i.index_name;
-
+```
 
 Show the size of an object
 ---------------------------
@@ -210,7 +212,7 @@ Redolog size
 
 ##### FRA size
 
-   select SPACE_USED/1024/1024/1024 "SPACE_USED(GB)" ,SPACE_LIMIT/1024/1024/1024 "SPACE_LIMIT(GB)" from  v$recovery_file_dest;
+    select SPACE_USED/1024/1024/1024 "SPACE_USED(GB)" ,SPACE_LIMIT/1024/1024/1024 "SPACE_LIMIT(GB)" from  v$recovery_file_dest;
 
 All in one in script all file size
 =============== 
@@ -273,6 +275,9 @@ ASM Diskgrp size
      /
 
 ##### LOB segment 
+-------
+
+```
           Declare
           TOTAL_BLOCKS number;
           TOTAL_BYTES number;
@@ -301,7 +306,7 @@ ASM Diskgrp size
           end;
           / 
 
-
+```
  ##### Size and fragmentation
  ---------------------------------
 
