@@ -1,3 +1,5 @@
+
+
 ##### What is Oracle Table Fragmentation?
 
 If a table is only subject to inserts, there will not be any fragmentation. Fragmentation comes with when we update/delete data in table. 
@@ -15,9 +17,10 @@ HWM is an indicator of USED BLOCKS in the database. Blocks below the high water 
 
 Since Oracle knows that blocks beyond the high water mark don’t have data, it only reads blocks up to the high water mark when doing a full table scan. 
 DDL statement always resets the HWM. What are the reasons to reorganization of table? 
-a) Slower response time (from that table)
+
+****a) Slower response time (from that table)
 b) High number of chained (actually migrated) rows. 
-c) Table has grown many folds and the old space is not getting reused.
+c) Table has grown many folds and the old space is not getting reused.***
 
 Note: Index based queries may not get that much benefited by reorg as compared to queries which does Full table scan.
 
@@ -28,9 +31,12 @@ This all is due to fragmentation in the table or stats for table are not updated
 
 TO remove fragmentation 
 ----------------
-1. Gather table stats: ———————
-2.check table size
-3. check fragmentation table
+> 1. Gather table stats
+
+> 2.check table size
+
+> 3. check fragmentation table
+
 
 
 query to check fragmentation for the table
