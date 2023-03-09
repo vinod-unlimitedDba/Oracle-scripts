@@ -47,7 +47,7 @@ To find the database Growth in month wise
           where to_char(creation_time,'RRRR')='2014'
           group by to_char(creation_time, 'MM-RRRR')
           order by  to_char(creation_time, 'MM-RRRR');
-
+##### 2
           col growth_gb format 999G999D99
           col month     format a20
           select to_char(creation_time, 'YYYY MM') month, sum(bytes)/1024/1024/1024 growth_gb,
@@ -106,7 +106,7 @@ Schema related query
       break on report
       select OWNER,sum(bytes)/1024/1024/1000 "SIZE_IN_GB" from dba_segments group by owner order by owner;
 
-size in MB
+particular schema size in MB
 ====================
       col du_MB head MB FOR 99999999.9	
       col du_GB head GB FOR 99999999.9
@@ -133,7 +133,7 @@ Find SCHEMA size:
 
 Schema size of segment
 ----------------------------
- ```  
+```  
    BREAK ON REPORT
    COMPUTE SUM LABEL TOTAL OF "Size of Each Segment in GB" ON REPORT
    select segment_type, sum(bytes/1024/1024/1024) "Size of Each Segment in GB" from dba_segments where owner='&SYS' group by segment_type order by 1;
@@ -145,42 +145,42 @@ Table size
     select sum(bytes/1024/1024/1024) “size in GB” from dba_segments 
     where segment_name='&TABLE_NAME' and segment_type='TABLE';
 
-#####
+##### 2
 
-SELECT SUM(bytes), SUM(bytes)/1024/1024/1024 GB
+      SELECT SUM(bytes), SUM(bytes)/1024/1024/1024 GB
         FROM dba_extents     WHERE owner = '&owner'
         AND segment_name = '&table_name'
     /
 
-#####
+##### 3
     select NUM_ROWS, BLOCKS, EMPTY_BLOCKS, AVG_SPACE, AVG_ROW_LEN, NUM_ROWS, NUM_FREELIST_BLOCKS 
     from all_tables where owner = 'DBUSR' and table_name = 'T'; 
 
 How to find table size in database.
 -------------------------------------
-  SELECT DS.TABLESPACE_NAME, SEGMENT_NAME, ROUND(SUM(DS.BYTES) / (1024 * 1024 * 1024)) AS GB FROM DBA_SEGMENTS DS WHERE SEGMENT_NAME = '&tableName'
-  GROUP BY DS.TABLESPACE_NAME,  SEGMENT_NAME;
+     SELECT DS.TABLESPACE_NAME, SEGMENT_NAME, ROUND(SUM(DS.BYTES) / (1024 * 1024 * 1024)) AS GB FROM DBA_SEGMENTS DS WHERE SEGMENT_NAME = '&tableName'
+     GROUP BY DS.TABLESPACE_NAME,  SEGMENT_NAME;
 
 To Get The Oracle Table size and index size
 --------------------------------------
-    select segment_name,TABLESPACE_NAME ,segment_type, bytes/1024/1024/1024 size_gb from dba_segments where segment_name = ‘&segment_name’ or segment_name in (select index_name from dba_indexes where table_name=’&tablename’ and table_owner=’&owner’);
+    select segment_name,TABLESPACE_NAME ,segment_type, bytes/1024/1024/1024 size_gb from dba_segments where segment_name = ‘&segment_name’ or segment_name in (select       index_name from dba_indexes where table_name=’&tablename’ and table_owner=’&owner’);
 
 Index size for table
 ==================
 
-  SELECT owner, segment_name AS table_name, NULL as index_name, SUM(bytes)/1024/1024/1024 size_mb
- FROM dba_segments
-  WHERE segment_name = '&TABLE'
-    AND owner = '&OWNER'
-GROUP BY owner, segment_name
-UNION ALL
-SELECT i.owner, i.table_name, i.index_name, SUM(bytes)/1024/1024 size_mb
-FROM dba_indexes i, dba_segments s
-WHERE s.owner = i.owner
-    AND s.segment_name = i.index_name
-    AND i.table_name = '&TABLE'
-    AND i.owner = '&OWNER'
-GROUP BY i.owner, i.table_name, i.index_name;
+        SELECT owner, segment_name AS table_name, NULL as index_name, SUM(bytes)/1024/1024/1024 size_mb
+        FROM dba_segments
+        WHERE segment_name = '&TABLE'
+        AND owner = '&OWNER'
+        GROUP BY owner, segment_name
+        UNION ALL
+        SELECT i.owner, i.table_name, i.index_name, SUM(bytes)/1024/1024 size_mb
+        FROM dba_indexes i, dba_segments s
+        WHERE s.owner = i.owner
+        AND s.segment_name = i.index_name
+        AND i.table_name = '&TABLE'
+        AND i.owner = '&OWNER'
+        GROUP BY i.owner, i.table_name, i.index_name;
 
 
 Show the size of an object
@@ -208,9 +208,9 @@ Redolog size
           ORDER BY a.GROUP# ASC;
 
 
-FRA size
+##### FRA size
 
-SQL> select SPACE_USED/1024/1024/1024 "SPACE_USED(GB)" ,SPACE_LIMIT/1024/1024/1024 "SPACE_LIMIT(GB)" from  v$recovery_file_dest;
+   select SPACE_USED/1024/1024/1024 "SPACE_USED(GB)" ,SPACE_LIMIT/1024/1024/1024 "SPACE_LIMIT(GB)" from  v$recovery_file_dest;
 
 All in one in script all file size
 =============== 
@@ -272,33 +272,34 @@ ASM Diskgrp size
      select group_number  "Group",  name "Group Name",state  "State" ,type  "Type",total_mb/1024 "Total GB" , free_mb/1024  "Free GB" from     v$asm_diskgroup
      /
 
-Declare
-TOTAL_BLOCKS number;
-TOTAL_BYTES number;
-UNUSED_BLOCKS number;
-UNUSED_BYTES number;
-LAST_USED_EXTENT_FILE_ID number;
-LAST_USED_EXTENT_BLOCK_ID number;
-LAST_USED_BLOCK number;
- 
-begin
-dbms_space.unused_space('<owner>','<lob_name>','LOB',
-TOTAL_BLOCKS, TOTAL_BYTES, UNUSED_BLOCKS, UNUSED_BYTES,
-LAST_USED_EXTENT_FILE_ID, LAST_USED_EXTENT_BLOCK_ID,
-LAST_USED_BLOCK);
- 
-dbms_output.put_line('SEGMENT_NAME = <lob segment="" name="">');
-dbms_output.put_line('-----------------------------------');
-dbms_output.put_line('TOTAL_BLOCKS = '||TOTAL_BLOCKS);
-dbms_output.put_line('TOTAL_BYTES = '||TOTAL_BYTES);
-dbms_output.put_line('UNUSED_BLOCKS = '||UNUSED_BLOCKS);
-dbms_output.put_line('UNUSED BYTES = '||UNUSED_BYTES);
-dbms_output.put_line('LAST_USED_EXTENT_FILE_ID = '||LAST_USED_EXTENT_FILE_ID);
-dbms_output.put_line('LAST_USED_EXTENT_BLOCK_ID = '||LAST_USED_EXTENT_BLOCK_ID);
-dbms_output.put_line('LAST_USED_BLOCK = '||LAST_USED_BLOCK);
- 
-end;
-/ 
+##### LOB segment 
+          Declare
+          TOTAL_BLOCKS number;
+          TOTAL_BYTES number;
+          UNUSED_BLOCKS number;
+          UNUSED_BYTES number;
+          LAST_USED_EXTENT_FILE_ID number;
+          LAST_USED_EXTENT_BLOCK_ID number;
+          LAST_USED_BLOCK number;
+
+          begin
+          dbms_space.unused_space('<owner>','<lob_name>','LOB',
+          TOTAL_BLOCKS, TOTAL_BYTES, UNUSED_BLOCKS, UNUSED_BYTES,
+          LAST_USED_EXTENT_FILE_ID, LAST_USED_EXTENT_BLOCK_ID,
+          LAST_USED_BLOCK);
+
+          dbms_output.put_line('SEGMENT_NAME = <lob segment="" name="">');
+          dbms_output.put_line('-----------------------------------');
+          dbms_output.put_line('TOTAL_BLOCKS = '||TOTAL_BLOCKS);
+          dbms_output.put_line('TOTAL_BYTES = '||TOTAL_BYTES);
+          dbms_output.put_line('UNUSED_BLOCKS = '||UNUSED_BLOCKS);
+          dbms_output.put_line('UNUSED BYTES = '||UNUSED_BYTES);
+          dbms_output.put_line('LAST_USED_EXTENT_FILE_ID = '||LAST_USED_EXTENT_FILE_ID);
+          dbms_output.put_line('LAST_USED_EXTENT_BLOCK_ID = '||LAST_USED_EXTENT_BLOCK_ID);
+          dbms_output.put_line('LAST_USED_BLOCK = '||LAST_USED_BLOCK);
+
+          end;
+          / 
 
 
  ##### Size and fragmentation
@@ -322,7 +323,7 @@ end;
 
   ######                     
                       
-     select e.*, d.owner index_owner,d.index_name, d.index_type, sum(g.bytes/1024/1024/1024) index_size_gb, d.TABLESPACE_NAME index_tbs from         dba_segments g, dba_indexes d
+     select e.*, d.owner index_owner,d.index_name, d.index_type, sum(g.bytes/1024/1024/1024) index_size_gb, d.TABLESPACE_NAME index_tbs from         dba_segments g,         dba_indexes d
      right outer join 
       (select * from (
      select a.owner tabown, a.TABLE_NAME, b.SIZE_GB, ((a.BLOCKS*8192/1024/1024/1024)-(a.NUM_ROWS*AVG_ROW_LEN/1024/1024/1024)) as ACTUAL_GB, 
