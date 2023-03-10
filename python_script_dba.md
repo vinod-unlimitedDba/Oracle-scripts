@@ -46,4 +46,10 @@ for tablespace, pct_used in cursor:
             server.starttls(context=context)
             server.login(sender_email, password)
             server.sendmail(sender_email, receiver_email, message)
+            
+# Close database connection and cursor
+cursor.close()
+connection.close()
+            
+            
 ```
