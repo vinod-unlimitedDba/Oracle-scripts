@@ -320,11 +320,11 @@ ORDER BY tablespace_name, owner, segment_type;
 
 detail abt segment of the tablespace 
 ------------
-
+```
  select tablespace_name, count(*) NUM_OBJECTS,
  sum(bytes), sum(blocks), sum(extents) from dba_segments 
  group by rollup (tablespace_name) order by 2;
-
+```
 
 
 
