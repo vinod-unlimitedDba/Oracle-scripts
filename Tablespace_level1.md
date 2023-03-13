@@ -292,6 +292,7 @@ SELECT t.tablespace_name, b.ts#, t.block_size, b.status, COUNT(*) num_bufs, ROUN
 FROM v$bh b, dba_tablespaces t, v$tablespace vt
 WHERE b.ts# = vt.ts# AND vt.name = t.tablespace_name GROUP BY t.tablespace_name, b.ts#, t.block_size, b.status ORDER BY COUNT(*) DESC;
 ```
+
 To check Growth rate of  Tablespace
 --------------------------------------------
 ```
@@ -316,6 +317,14 @@ WHERE  tablespace_name IN ('&TBS')
 GROUP BY tablespace_name, owner, segment_type
 ORDER BY tablespace_name, owner, segment_type;
 ```
+
+detail abt segment of the tablespace 
+------------
+
+ select tablespace_name, count(*) NUM_OBJECTS,
+ sum(bytes), sum(blocks), sum(extents) from dba_segments 
+ group by rollup (tablespace_name) order by 2;
+
 
 
 
