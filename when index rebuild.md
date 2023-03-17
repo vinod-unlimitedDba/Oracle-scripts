@@ -22,9 +22,9 @@ Below is a sample output from INDEX_STATS Table.
 Statement processed.
  
 SQL> SELECT name, height,lf_rows,lf_blks,del_lf_rows FROM INDEX_STATS;
-NAME                      HEIGHT    LF_ROWS    LF_BLKS    DEL_LF_ROW
----------------------- -----------   ----------      ----------   ----------------
-DX_GAM_ACCT           2             1                     3               6
+|NAME                   |   HEIGHT   | LF_ROWS   | LF_BLKS   | DEL_LF_ROW  |
+
+|DX_GAM_ACCT         |  2           |  1          | 3             |  6|
  
 1 row selected.
  
