@@ -30,10 +30,11 @@ SQL> SELECT name, height,lf_rows,lf_blks,del_lf_rows FROM INDEX_STATS;\
 1 row selected.
  
 There are two rules of thumb to help determine if the index needs to be rebuilt. 
-1)     If the index has height greater than four, rebuild the index.
- 
-2)     The deleted leaf rows should be less than 20%.
- 
+
+           1)     If the index has height greater than four, rebuild the index.
+
+           2)     The deleted leaf rows should be less than 20%.
+
 If it is determined that the index needs to be rebuilt, this can easily be accomplished by the ALTER INDEX <INDEX_NAME> REBUILD | REBULID ONLINE command. It is not recommended, this command could be executed during normal operating hours. The alternative is to drop and re-create the index. Creating an index uses the base table as its data source that needs to put a lock on the table. The index is also unavailable during creation.
  
  In this example, the HEIGH column is clearly showing the value 2. This is not a good candidate for rebuilding. For most indexes, the height of the index will be quite low, i.e. one or two. I have seen an index on a 2 million-row table that had height two or three. An index with height greater than four may need to be rebuilt as this might indicate a skewed tree structure. This can lead to unnecessary database block reads of the index. Let’s take another example.
