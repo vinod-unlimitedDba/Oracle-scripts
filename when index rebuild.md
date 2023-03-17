@@ -21,10 +21,11 @@ Below is a sample output from INDEX_STATS Table.
  
 Statement processed.
  
-SQL> SELECT name, height,lf_rows,lf_blks,del_lf_rows FROM INDEX_STATS;
-|NAME                   |   HEIGHT   | LF_ROWS   | LF_BLKS   | DEL_LF_ROW  |
+SQL> SELECT name, height,lf_rows,lf_blks,del_lf_rows FROM INDEX_STATS;\
 
-|DX_GAM_ACCT         |  2           |  1          | 3             |  6|
+|NAME                   |   HEIGHT   | LF_ROWS   | LF_BLKS   | DEL_LF_ROW  |
+|---------------------|------------|------------|-------------|------------|
+|DX_GAM_ACCT         |  2          |  1         | 3         |  6        |
  
 1 row selected.
  
@@ -42,9 +43,9 @@ Statement processed.
  
 SQL> SELECT name, height, lf_rows, del_lf_rows, (del_lf_rows/lf_rows) *100 as ratio FROM INDEX_STATS;
  
-NAME                           HEIGHT     LF_ROWS    DEL_LF_ROW RATIO    
------------------------------- ---------- ---------- ---------- -------
-IDX_GAM_FID                                  1          189         62        32.80
+|NAME                         |  HEIGHT   |  LF_ROWS  |  DEL_LF_ROW |RATIO  |  
+|------------------------------ | ---------- |---------- |---------- |-------|
+|IDX_GAM_FID                     |1          |189         |62        |32.80|
  
 1 row selected.
  
@@ -63,9 +64,9 @@ Statement processed.
 SQL> SELECT name, height, lf_rows, del_lf_rows, (del_lf_rows/lf_rows)*
 100 as ratio FROM INDEX_STATS;
  
-NAME                           HEIGHT     LF_ROWS    DEL_LF_ROW RATIO    
------------------------------- ---------- ---------- ---------- -------
-IDX_GAM_FID                                  1          127         0        0
+|NAME                         |  HEIGHT   |  LF_ROWS  |  DEL_LF_ROW |RATIO  |  
+|-----------------------------| ----------| ----------|----------   |-------|
+|IDX_GAM_FID                  |       1   |       127 |       0     |   0   |
  
 1 row selected. 
 Examining the INDEX_STATS table shows that the 62 deleted leaf rows were dropped from the index. Notice that the total number of leaf rows went from 189 to 127, which is a difference of 62 leaf rows (189-127). This index should provide better performance for the application.
