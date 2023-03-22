@@ -115,6 +115,24 @@ To kill several sessions of a user, following PLSQL block can be used
 	END;
 	/
 
+Disable all foriegn constraint for all schema
+-------------------------
+
+    v_sql_stmt varchar2(1024);
+    BEGIN
+    FOR fk IN (SELECT table_name, constraint_name
+    FROM user_constraints
+    WHERE constraint_type='R')
+    LOOP
+    v_sql_stmt := 'alter table ' || fk.table_name ||
+    ' enable constraint "' || fk.constraint_name || '"';
+    DBMS_OUTPUT.PUT_LINE(v_sql_stmt || ';');
+    EXECUTE IMMEDIATE v_sql_stmt;
+    END LOOP;
+    END ;
+    /
+
+
 
 ##### All tables DLL'S under shcema
      SELECT DBMS_METADATA.get_ddl ('TYPE', table_name, owner) FROM all_tables WHERE owner = UPPER('&1');
