@@ -142,9 +142,21 @@ Disable all foriegn constraint for all schema
       SELECT DBMS_METADATA.GET_DDL('INDEX', INDEX_NAME, owner) FROM USER_INDEXES WHERE owner='&1';
 
       
-     
-
-		
+Truncate all under the schema
+------------------
+```
+set serveroutput on size 1000000
+spool truncate_wseprod_uat_20110914.log
+BEGIN
+FOR rec IN (select 'truncate '|| object_type || ' ' || object_name AS drop_sql
+FROM user_objects WHERE object_type IN ('TABLE')
+LOOP
+DBMS_OUTPUT.PUT_LINE(rec.drop_sql);
+EXECUTE IMMEDIATE(rec.drop_sql);
+END LOOP;
+END;
+/
+```		
  
 
 
