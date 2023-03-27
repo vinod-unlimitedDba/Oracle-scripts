@@ -1,5 +1,7 @@
 
-To kill several sessions of a user, following PLSQL block can be used 
+
+
+To kill several sessions of a user, following PLSQL block can be used
 -----------------------------------------------------------------
 
 		BEGIN
