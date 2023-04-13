@@ -70,11 +70,12 @@ where a.file_id = b.file_id(+) order by savings desc
 
 
 
--- Script written for a case where data was loaded rapidly and without prior notice
--- DBAs got tired of adding more space every few hours
--- But there was a global company policy against auto-extend
--- So we decided that tablespace size should double on every resize
+-- Script written for a case where data was loaded rapidly and without prior notice\
+-- DBAs got tired of adding more space every few hours\
+-- But there was a global company policy against auto-extend\
+-- So we decided that tablespace size should double on every resize\
 -- To minimize the number of resizes DBAs had to do.
+```
 declare
   new_size number :=0;
   file_to_grow dba_data_files.file_name%TYPE := null;
@@ -139,3 +140,4 @@ begin
   END LOOP;
 end;
 /
+```
