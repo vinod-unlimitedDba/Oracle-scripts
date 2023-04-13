@@ -11,9 +11,9 @@ Basic
 
 find the release ====  cat /etc/*-release
                        cat /etc/enterprise-release
-					   cat /etc/redhat-release
-					   lsb_release -a 
-					   cat /proc/version
+		       cat /etc/redhat-release
+			lsb_release -a 
+			cat /proc/version
                         
 OS version =========
 						/usr/bin/uname -s -r
@@ -29,16 +29,16 @@ Get kernel
 information   ========= du -b filename
 			On linux
 			$uname -a
-			Linux debian 2.6.18-4-686 #1 SMP Wed May 9 23:03:12 UTC 2007 i686 GNU/Linux
+				Linux debian 2.6.18-4-686 #1 SMP Wed May 9 23:03:12 UTC 2007 i686 GNU/Linux
 			On Solaris
-			isainfo -b -v
-			/usr/bin/isainfo -kv
+				isainfo -b -v
+				/usr/bin/isainfo -kv
 			On AIX
-			$ getconf -a | grep KERN
-			$ file /usr/lib/boot/unix*
+				$ getconf -a | grep KERN
+				$ file /usr/lib/boot/unix*
 			On HP-UX
-			/usr/bin/ getconf KERNEL_BITS
-			/usr/bin/file /stand/vmunix
+				/usr/bin/ getconf KERNEL_BITS
+				/usr/bin/file /stand/vmunix
 
 
 
