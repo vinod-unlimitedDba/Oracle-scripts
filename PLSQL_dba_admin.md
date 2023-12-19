@@ -39,7 +39,7 @@ To kill several sessions of a user, following PLSQL block can be used
 	   EXECUTE IMMEDIATE 'ALTER SYSTEM KILL SESSION ''' || r.sid || ',' || r.serial# || '''';
 	 END LOOP;
 
-###### Table lock
+###### If Table is locked want to all kill session it will be propt object name
 
               	DECLARE
 		 CURSOR v_curqu IS
@@ -47,7 +47,7 @@ To kill several sessions of a user, following PLSQL block can be used
 		 FROM V$SESSION A, V$LOCKED_OBJECT B, DBA_OBJECTS C
 		 WHERE B.OBJECT_ID = C.OBJECT_ID
 		 AND A.SID = B.SESSION_ID
-		 AND OBJECT_NAME='LGCL_DB_ID'
+		 AND OBJECT_NAME='&LGCL_DB_ID'
 		 AND A.TYPE != 'BACKGROUND';
 		BEGIN
 		FOR rec in v_curqu
