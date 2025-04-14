@@ -1,0 +1,1134 @@
+
+
+4. Adaptive Cursor Sharing
+---------------------
+
+
+When a new SQL query is issued, the database server checks its syntax and compares it to existing queries in the library cache. 
+If it matches an existing query, it uses the same execution plan. 
+This sharing mechanism works with bind variables or literals when CURSOR_SHARING is set to FORCE. 
+However, using bind variables can sometimes lead to performance issues because they avoid reoptimization.
+
+Oracle Database 11g introduces Adaptive Cursor Sharing (ACS) to balance resource sharing and SQL optimization.
+ ACS allows multiple optimal execution plans for a single SQL statement based on the value of bind variables.
+ The chapter discusses the prerequisites for ACS, its mechanism, and how to monitor it. 
+ It also highlights a case where a bind-aware cursor becomes nonperformant, creating many child cursors and affecting the library cache.
+
+cursor sharing and SQL optimization might be diametrically opposed needs to avoid when reoptimization by sharing the existing child cursor, 
+they are not necessarily going to do the same amount of work and when they create performance issue.
+
+
+			Scenario:
+			Imagine you have a database for an online store, and you frequently run a query to find products within a certain price range. The query looks something like this:
+
+			SELECT * FROM products WHERE price BETWEEN :min_price AND :max_price;
+			Cursor Sharing:
+			
+			When you use bind variables (:min_price and :max_price), the database can reuse the same execution plan for different values of these variables. This reduces the overhead of parsing and optimizing the query each time it's run. For example:
+
+			First Execution:
+
+			:min_price = 100
+			:max_price = 200
+			
+			Execution plan is created and stored.
+			
+			Second Execution:
+
+			:min_price = 150
+			:max_price = 250
+			The same execution plan is reused.
+			
+			SQL Optimization:
+			However, the optimal execution plan can vary significantly based on the values of :min_price and :max_price. For instance:
+
+			If :min_price and :max_price are close together (e.g., 100 to 200), the database might use an index scan because fewer rows need to be checked.
+			If :min_price and :max_price are far apart (e.g., 100 to 10000), a full table scan might be more efficient because a large portion of the table needs to be checked.
+			
+			Conflict:
+			
+			Using the same execution plan for both scenarios can lead to suboptimal performance. For example, if the plan optimized for a narrow range (index scan) is used for a wide range, it might result in many index lookups, which is inefficient.
+
+			Adaptive Cursor Sharing (ACS):
+			Oracle Database 11g's ACS addresses this by allowing multiple execution plans for the same query based on the values of bind variables. It can adapt and choose the best plan dynamically:
+
+			First Execution:
+
+			:min_price = 100
+			:max_price = 200
+			
+			Execution plan (index scan) is created and stored.
+			Second Execution:
+
+			:min_price = 100
+			:max_price = 10000
+			
+			A new execution plan (full table scan) is created and stored.
+			This way, the database can optimize performance for different scenarios without compromising on the benefits of cursor sharing.
+
+
+
+Bind Sensitiveness with Range Predicate example:1
+
+simple two-column heap table that has a B-tree singlecolumn
+index. Basic statistics for the table, without histograms,
+
+
+		SQL> create table t_acs(n1 number, n2 number);
+		
+		SQL> BEGIN
+		for j in 1..1200150 loop
+		if j = 1 then
+		insert into t_acs values (j, 1);
+		elsif j>1 and j<=101 then
+		insert into t_acs values(j, 100);
+		elsif j>101 and j<=1101 then
+		insert into t_acs values (j, 1000);
+		elsif j>10001 and j<= 110001 then
+		insert into t_acs values(j,10000);
+		else
+		insert into t_acs values(j, 1000000);
+		end if;
+		end loop;
+		commit;
+		END;
+		/
+		
+		SQL> create index t_acs_i1 on t_acs(n2);
+		
+		SQL> BEGIN
+dbms_stats.gather_table_stats
+(user
+,'t_acs'
+,method_opt => 'for all columns size 1'
+,cascade => true
+,estimate_percent => dbms_stats.auto_sample_size
+);
+END;
+/
+
+Here n2 column is highly sweked
+
+When a cursor uses a bind variable in a range predicate of a where clause,
+
+SQL> var ln2 number;
+SQL> exec :ln2 := 100;
+SQL> select count(1) from t_acs where n2 <= :ln2;
+COUNT(1)
+----------
+101
+SQL> select * from table(dbms_xplan.display_cursor);
+----------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+----------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 3 |
+|* 2 | TABLE ACCESS FULL| T_ACS | 397K| 1165K|
+
+Q`1
+
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE
+------------- ------------ -----------------
+ct0yv82p15jdw 0 Y
+
+
+
+SQL> alter system flush shared_pool;
+SQL> exec dbms_stats.delete_table_stats(user,'t_acs');
+SQL> select count(1) from t_acs where n2 <= :ln2;
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID ct0yv82p15jdw, child number 0
+------------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+------------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 13 |
+|* 2 | INDEX RANGE SCAN| T_ACS_I1 | 101 | 1313 |
+------------------------------------------------------
+Predicate Information (identified by operation id):
+
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE
+------------- ------------ -----------------
+ct0yv82p15jdw 0 N
+
+child cursor 0 has not been marked bind sensitive in this case because column N2 does not have any
+statistics at
+
+Bind Sensitiveness with Equality Predicate and Histogram
+
+A cursor can also be marked bind sensitive when the column
+appears in an equality predicate and has a histogram,
+
+SQL> BEGIN
+dbms_stats.gather_table_stats
+(user
+,'t_acs'
+,method_opt => 'for all columns size auto'
+,cascade => true
+,estimate_percent => dbms_stats.auto_sample_size
+);
+END;
+/
+
+
+SQL> SELECT column_name, histogram FROM user_tab_col_statistics WHERE table_name = 'T_ACS' AND column_name = 'N2';
+
+COLUMN_NAME HISTOGRAM
+------------------------------ ---------------
+N2 FREQUENCY
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID f2pmwazy1rnfd, child number 0
+-------------------------------------
+------------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+------------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 3 |
+|* 2 | INDEX RANGE SCAN| T_ACS_I1 | 1372 | 4116 |
+------------------------------------------------------
+
+SQL> select
+sql_id
+,child_number
+,is_bind_sensitive
+from
+v$sql
+where
+sql_id = 'f2pmwazy1rnfd';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE
+------------- ------------ -----------------
+f2pmwazy1rnfd 0 Y
+
+
+Bind Sensitiveness with Partition Keys
+Finally, a cursor can be marked bind sensitive when a SQL query uses a partition key in its predicate part. To demonstrate, the following creates a range partitioned table,
+populates it with appropriate data,
+
+
+SQL> create table t_acs_part
+(n1 number, n2 number)
+partition by range (n2)
+(partition p1 values less than (100)
+,partition p2 values less than (1000)
+,partition p3 values less than (10000)
+,partition p4 values less than (100000)
+,partition p5 values less than (1000000)
+,partition p6 values less than (10000000)
+);
+SQL> BEGIN
+for j in 1..1200150 loop
+if j = 1 then
+insert into t_acs_part values (j, 1);
+elsif j>1 and j<=101 then
+insert into t_acs_part values(j, 100);
+elsif j>101 and j<=1101 then
+insert into t_acs_part values (j, 1000);
+elsif j>10001 and j<= 110001 then
+insert into t_acs_part values(j,10000);
+else
+insert into t_acs_part values(j, 1000000);
+end if;
+end loop;
+commit;
+END;
+/
+
+SQL> SELECT
+column_name,
+histogram
+FROM user_tab_col_statistics
+WHERE table_name = 'T_ACS_PART'
+AND column_name = 'N2';
+COLUMN_NAME HISTOGRAM
+------------ -----------
+N2 NONE
+
+
+A query against this table using the partition key (N2) in
+the where clause causes the cursor to be marked bind
+sensitive:
+Click here to view code image
+SQL> select count(1) from t_acs_part where n2 = :ln2;
+COUNT(1)
+----------
+100
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID byztzuffb65n9, child number 0
+-----------------------------------------------------------------
+-----
+| Id | Operation | Name | Rows | Pstart| Pstop |
+-----------------------------------------------------------------
+-----
+| 0 | SELECT STATEMENT | | | | |
+| 1 | SORT AGGREGATE | | 1 | | |
+| 2 | PARTITION RANGE SINGLE| | 100 | KEY | KEY |
+|* 3 | TABLE ACCESS FULL | T_ACS_PART | 100 | KEY | KEY |
+-----------------------------------------------------------------
+-----
+Predicate Information (identified by operation id):
+---------------------------------------------------
+3 - filter("N2"=:LN2)
+SQL> select
+sql_id
+,child_number
+,is_bind_sensitive
+from
+v$sql
+where
+sql_id = 'byztzuffb65n9';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE
+------------- ------------ -----------------
+byztzuffb65n9 0 Y
+In this case, too, the cursor has been marked bind sensitive.
+
+
+ACS in Action
+--------------
+
+we know about various prerequisites a SQL cursor should fulfill in order to be marked bind sensitive, let’s look
+at how Oracle generates multiple optimal execution plans for the same cursor using different bind variable values.
+
+SQL> select n2, count(1) from t_acs group by n2 order by 2;
+N2 COUNT(1)
+---------- ----------
+1 1
+100 100
+1000 1000
+10000 100000
+1000000 1099049
+
+following demonstration has been carried out on the
+nonpartitioned table t_acs with skewed data distribution in column N2, as shown earlier.
+
+column will be used in a query having an equality predicate, histograms have been gathered on column N2.
+
+
+This query uses two bind variable values in the equality predicate: 100 and 1000000.
+The value 100 favors an index range scan path, while the value 1000000 favors a full table scan.
+
+SQL> alter system flush shared_pool;
+SQL> exec :ln2 := 100
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID f2pmwazy1rnfd, child number 0
+------------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+------------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 3 |
+|* 2 | INDEX RANGE SCAN| T_ACS_I1 | 1372 | 4116 |
+------------------------------------------------------
+
+
+Let’s now change the bind variable value to 1000000 for which we expect to have a full table scan plan:
+
+SQL> exec :ln2 := 1000000
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID f2pmwazy1rnfd, child number 0
+------------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+------------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 3 |
+|* 2 | INDEX RANGE SCAN| T_ACS_I1 | 1372 | 4116 |
+------------------------------------------------------
+
+
+Despite the numerous additional rows for the new value of
+the bind variable, we still use the same index range scan execution plan as we used earlier
+
+
+SQL> select
+sql_id
+,child_number
+,is_bind_sensitive
+,is_bind_aware
+,is_shareable
+from
+v$sql
+where
+sql_id = 'f2pmwazy1rnfd';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE IS_BIND_AWARE IS_SHAREABLE
+------------- ------------ ----------------- ---------------- -------------
+f2pmwazy1rnfd 0 Y N Y
+
+the cursor is bind sensitive but not bind aware yet.
+
+
+execute the same query again with the same bind variable value (1000000):
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID f2pmwazy1rnfd, child number 1
+----------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+----------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 3 |
+|* 2 | TABLE ACCESS FULL| T_ACS | 1096K| 3212K|
+----------------------------------------------------
+
+
+Oracle Optimizer has generated a new execution plan that better suits the current bind variable value.
+
+look at the child cursor properties, we will find that a new child cursor 1 has been generated
+and is marked bind aware. Also, the existing child cursor 0 has been assigned a “not shareable” status signaling that it
+can be aged out away from the library cache under space pressure, as shown in the following:
+
+SQL> select
+sql_id ,child_number ,is_bind_sensitive ,is_bind_aware ,is_shareable
+from v$sql where
+sql_id = 'f2pmwazy1rnfd';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE IS_BIND_AWARE IS_SHAREABLE
+------------- ------------ ----------------- ---------------- ---
+----------
+f2pmwazy1rnfd 0 Y N N
+f2pmwazy1rnfd 1 Y Y Y
+
+
+ACS Bind-Awareness Monitoring
+The /*+ bind_aware */ undocumented hint has the effect of making the cursor immediately bind aware,
+
+
+SQL> create table t1
+as select
+rownum n1
+,trunc((rownum -1)/3) n2
+from dual
+connect by level <=1e3;
+SQL> exec dbms_stats.gather_table_stats(user, 't1');
+SQL> select /*+ bind_aware */
+count(*)
+from t1
+where n2 = :ln2;
+COUNT(*)
+----------
+0
+SQL> select * from table(dbms_xplan.display_cursor);
+SQL_ID 5gz8nu7ru5gh0, child number 0
+---------------------------------------------------
+| Id | Operation | Name | Rows | Bytes |
+---------------------------------------------------
+| 0 | SELECT STATEMENT | | | |
+| 1 | SORT AGGREGATE | | 1 | 4 |
+|* 2 | TABLE ACCESS FULL| T1 | 1 | 4 |
+---------------------------------------------------
+Predicate Information (identified by operation id):
+---------------------------------------------------
+2 - filter("N2"=:LN2)
+SQL> SQL> select
+sql_id
+,child_number
+,is_bind_sensitive
+,is_bind_aware
+,is_shareable
+from
+v$sql
+where
+sql_id = '5gz8nu7ru5gh0';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE IS_BIND_AWARE IS_SHAREABLE
+------------- ------------ ----------------- ---------------- ---
+---------
+5gz8nu7ru5gh0 0 Y Y Y
+
+you don’t use this hint, you may find that your initial cursor needs a certain number of executions before reaching
+the bind-awareness status.
+
+continue using the t_asc table that was engineered
+with a special data pattern to make the monitoring
+explanation obvious.
+
+
+BUCKET_ID and COUNT Relationship
+------------------
+Oracle provides three views that are used to monitor a cursor that is a candidate for an ACS feature:
+
+SQL> desc v$sql_cs_statistics
+
+V$SQL_CS_STATISTICS view lists the statistics of the
+number of processed rows by the corresponding child cursor, the number of executions it has undergone so far, 
+and the number of consumed buffers and CPU time. Although this view was reporting something in Oracle 11g
+
+V$SQL_CS_HISTOGRAM view stores the number of cursor
+executions per bucket and is used to decide when it is time
+to mark a cursor bind aware,
+
+V$SQL_CS_SELECTIVITY view begins to be useful only
+when a cursor has been marked bind aware. It contains
+information about the selectivity of the bind variable’s
+values, including a low and high value range per child cursor.
+
+goal of this section is to define the relationship that
+exists between the number of rows processed by a child
+cursor and the couple (BUCKET_ID, COUNT) of the
+V$SQL_CS_HISTOGRAM view.
+
+
+V$SQL_CS_HISTOGRAM view, however, is showing
+interesting information. The child cursor 0, used to honor the
+query, has three BUCKET_IDs: 0, 1, and 2. And it can be seen
+that for the child cursor 0, which has processed 100 rows,
+the COUNT of BUCKET_ID 0 has been incremented to 1:
+
+
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 1 → incremented because processed rows <1000
+0 1 0
+0 2 0
+If we execute the same query twice more, the COUNT of the
+BUCKET_ID 0 increments to 3, as follows:
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 3 → incremented because processed rows <1000
+0 1 0
+0 2 0
+Now, we will change the bind variable value to 10000 with
+100,000 rows, run the same query again, and check the
+contents of V$SQL_CS_HISTOGRAM.
+
+
+SQL> exec :ln2 := 10000;
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100000
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 3
+0 1 1 → incremented because 1000<=processed rows <1e6
+0 2 0
+
+
+SQL> exec :ln2 := 1000000;
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 3
+0 1 1
+0 2 1 → incremented because processed rows >=1e6
+
+
+three BUCKET_IDs belonging to any compiled child
+cursor:
+If the number of processed rows is between 0 and 1000, then increment the COUNT of BUCKET_ID 0.
+If the number of processed rows is between 1000 and 1 million, then increment the COUNT of BUCKET_ID 1.
+If the number of processed rows is greater than 1 million, then increment the COUNT of BUCKET_ID 2.
+
+
+continue using the
+pair (BUCKET_ID, COUNT) to figure out that secret sauce. The
+following sections look at three test cases:
+Case 1 looks at two adjacent buckets that have a COUNT
+greater than 0, while the COUNT of the remaining bucket
+is equal to 0.
+Case 2 involves two nonadjacent BUCKET_IDs
+(BUCKET_ID 0 and 2) that have a COUNT greater than 0,
+while the COUNT of BUCKET_ID 1 is equal to 0.
+Case 3 provides a scenario in which all BUCKET_IDs
+have a COUNT greater than 0.
+
+
+Case 1: Adjacent Buckets (0 and 1 or 1 and 2) with a
+COUNT Greater Than Zero
+This is the simplest case. We execute the initial query five
+times using the first bind variable value 100 and then five
+more times using the second bind variable value 10000.
+
+
+SQL> alter system flush shared_pool;
+SQL> exec :ln2 := 100
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+---------
+100
+SQL> –- repeat 4 times
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 5 → incremented 5 times
+0 1 0
+0 2 0
+SQL> exec :ln2 := 10000
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100000
+SQL> –- repeat 4 times
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 5
+0 1 5 → incremented 5 times
+0 2 0
+
+
+After five executions using a different bind variable value, which processes a high number of records and causes the
+COUNT of BUCKET_ID 1 to rise to 5, we are still sharing the same child cursor 0 (only one child cursor in V$SQL_CS_HISTOGRAM).
+
+Let’s try a sixth execution with the current bind variable value of 10000:
+
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100000
+The sixth execution at BUCKET_ID 1 (:ln2 = 10000) has
+made the cursor bind aware, and a new execution plan (CHILD_NUMBER 1) is compiled as follows:
+
+
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+1 0 0
+1 1 1
+1 2 0
+0 0 5 → COUNT of BUCKET_ID 0 = 5
+0 1 5 → COUNT of BUCKET_ID 1 = 5
+0 2 0
+
+
+SQL> select sql_id
+,child_number,is_bind_sensitive ,is_bind_aware
+,is_shareable
+from
+v$sql
+where
+sql_id = 'f2pmwazy1rnfd';
+SQL_ID CHILD_NUMBER IS_BIND_SENSITIVE IS_BIND_AWARE IS_SHAREABLE
+------------- ------------ ----------------- ------------- ------
+-------
+f2pmwazy1rnfd 0 Y N N
+f2pmwazy1rnfd 1 Y Y Y
+
+
+same observation was found when a similar experiment
+was conducted with adjacent buckets 1 and 2 having a
+COUNT greater than 0, while the COUNT of bucket 0 was equal to 0.
+
+
+secret sauce for the first case considered is:
+When the COUNT of a BUCKET_ID reaches the COUNT of its
+neighboring BUCKET_ID, the next execution marks the
+original cursor bind aware and a new child cursor is
+compiled. This is true provided the COUNT of the third BUCKET_ID equals 0.
+
+
+Case 2: Distant Buckets 0 and 2 with a COUNT Greater Than Zero
+
+
+We start this second experiment by executing the same
+query nine times (nine is a random number, which we can
+replace with any other number without altering the final
+result) using the bind variable value 100 (favoring bucket 0).
+Then we change the bind variable to 1000000 (favoring bucket 2).
+
+SQL> alter system flush shared_pool;
+SQL> exec :ln2 := 100
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100
+SQL> repeat this 8 times
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 9 → incremented 9 times = 9 executions
+0 1 0
+0 2 0
+-- change the bind variable value
+SQL> exec :ln2 := 1000000
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+SQL> repeat this query 2 times
+
+After three executions using a bind variable value of
+1000000, which processes more than a million rows and
+causes an increase in the COUNT of the distant BUCKET_ID 2),
+we are still sharing the same child cursor 0:
+Click here to view code image
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 9 → ceil(9/3) = 3 = COUNT of BUCKET_ID 2
+0 1 0
+0 2 3 → incremented 3 times = 3 executions
+
+
+
+Let’s try a fourth execution using this current bind variable
+value of 1000000:
+Click here to view code image
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+
+
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+1 0 0
+1 1 0 → bucket 1 not involved
+1 2 1
+0 0 9 → bucket 0 incremented 9 times: ceil(9/3)= 3
+0 1 0
+0 2 3 → bucket 2 incremented 3 times: 3 = ceil (9/3)
+
+Case 3: All Buckets with a COUNT Greater Than Zero
+------------------------------------------
+
+Let’s start with the simple example where the COUNTs of all buckets are greater than 0:
+
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd';
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+0 0 3
+0 1 1
+0 2 1
+
+goes without saying that to get the preceding results, we flushed the shared pool, executed the query at BUCKET_ID 0
+(:ln2 = 100) three times, once at BUCKET_ID 1 (:ln2 = 10000), and finally once at BUCKET_ID 2 (:ln2 = 1000000).
+
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+1 0 1 → when the 6th execution is for :ln2=100
+1 1 0
+1 2 0
+0 0 3
+0 1 1
+0 2 1
+
+In the following case, we manage to have 11 executions at
+BUCKET_ID 0 (:ln2 = 100), 4 executions at BUCKET_ID 2 (:ln2 = 10000), and 3 executions at BUCKET_ID 3
+(:ln2 = 1000000) in that order of execution:
+
+
+You can see from this situation that any execution at any
+BUCKET_ID (i.e., using any value among the three bind
+variables’ values) will mark the cursor bind aware:
+
+bucket COUNT distribution, we would need to take great care to avoid the cases mentioned earlier.
+For example, had we started with 11 executions at BUCKET_ID 0 and then executed the query five (> ceil
+(11/3)) times at the distant BUCKET_ID 2, then the cursor would have been marked bind aware even before 
+we could have attempted an execution at BUCKET_ID 1.
+
+
+SQL> exec :ln2 := 1000000
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select
+child_number
+,bucket_id
+,count
+from
+v$sql_cs_histogram
+where sql_id = 'f2pmwazy1rnfd' ;
+CHILD_NUMBER BUCKET_ID COUNT
+------------ ---------- ----------
+1 0 0
+1 1 0
+1 2 1 → execution done at this bucket
+0 0 11
+0 1 4
+0 2 3
+
+a cursor becomes bind aware and optimal execution plans are generated on the basis of the
+selectivity of the bind variable values, it has to go wrong
+(share the initial plan whatever the bind variable value may be).
+
+warm-up period can dramatically vary depending on the number of executions done at the three different buckets.
+
+Once a cursor is bind aware, a record is inserted into the
+V$SQL_CS_SELECTIVITY dynamic view for the first time, as shown in the following,
+
+SQL> alter system flush shared_pool;
+
+SQL> exec :ln2 := 100
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+
+SQL> exec :ln2 := 10000
+
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select
+child_number
+,predicate
+,low
+,high
+from
+v$sql_cs_selectivity
+where
+sql_id = 'f2pmwazy1rnfd';
+no rows selected
+
+
+cursor becomes bind aware, the optimal plans are generated
+following a new algorithm that has nothing to do with the
+(COUNT, BUCKET_ID) tandem exposed extensively previously.
+
+SQL> print :ln2
+LN2
+----------
+10000
+SQL> select count(1) from t_acs where n2 = :ln2;
+SQL> select
+child_number
+,predicate
+,low
+,high
+from
+v$sql_cs_selectivity
+where
+sql_id = 'f2pmwazy1rnfd';
+CHILD_NUMBER PREDICATE LOW HIGH
+------------ ---------------------------------------- ----------
+----------
+1 =LN2 0.074579 0.091152
+
+
+SQL> exec :ln2 := 100
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+100
+SQL> select
+child_number
+,predicate
+,low
+,high
+from
+v$sql_cs_selectivity
+where
+sql_id = 'f2pmwazy1rnfd';
+CHILD_NUMBER PREDICATE LOW HIGH
+------------ ---------------------------------------- ----------
+----------
+2 =LN2 0.000361 0.091152
+1 =LN2 0.074579 0.091152
+
+
+use the extreme bind variable value, which
+favors a full table scan and increments the COUNT of
+BUCKET_ID 2 (remember that at this stage the [BUCKET_ID,COUNT] tandem does not play any role):
+
+
+In this last series of tests, we’ll try to figure out how Oracle
+decides that it is time to compile a new execution plan when
+the COUNTs of all buckets are greater than 0.
+
+
+SQL> exec :ln2 := 1000000
+SQL> select count(1) from t_acs where n2 = :ln2;
+COUNT(1)
+----------
+1099049
+SQL> select
+child_number
+,predicate
+,low
+,high
+from
+v$sql_cs_selectivity
+where
+sql_id = 'f2pmwazy1rnfd';
+CHILD_NUMBER PREDICATE LOW HIGH
+------------ ---------------------------------------- ----------
+----------
+3 =LN2 0.823886 1.006972
+2 =LN2 0.000361 0.091152
+1 =LN2 0.074579 0.091152
+
+
+Oracle documentation says that when the selectivity for the peeked bind variable value is not found within an
+existing low and high value range, a new plan is generated. If this new plan is found to be equivalent to an existing one,
+the LOW and HIGH values of that existing plan will be updated without creating a new bind-aware plan.
+
+Stage 1: The cursor is not marked bind aware.
+Stage 2: The cursor is marked bind aware.
+
+extended cursor sharing layer code kicks in during the second stage, which peeks at each bind variable,
+gets its selectivity, and checks whether a child cursor exists within the selectivity range of the specified bind value.
+
+select
+sql_id
+,count(1)
+from
+v$sql
+where executions < 2
+group by sql_id
+having count(1) > 10
+order by 2 desc;
+
+a new plan (CHILD_NUMBER 3) has been generated and its LOW and HIGH values have been updated
+accordingly to reflect the selectivity of the new peeked bind variable (:ln2 = 1000000).
+
+Oracle documentation says that when the selectivity for the peeked bind variable value is not found within an
+existing low and high value range, a new plan is generated. If this new plan is found to be equivalent to an existing one,
+the LOW and HIGH values of that existing plan will be updated without creating a new bind-aware plan.
+
+extended cursor sharing layer code kicks in during the second stage, which peeks at each bind variable,
+gets its selectivity, and checks whether a child cursor exists within the selectivity range of the specified bind value.
+
+select sql_id ,count(1) from v$sql where executions < 2
+group by sql_id having count(1) > 10 order by 2 desc;
+
+select
+count(1)
+from
+v$sql_shared_cursor
+where SQL_ID = '7zwq7z1nj7vga';
+
+select
+count(1)
+from
+v$sql_shared_cursor
+where sql_id = '7zwq7z1nj7vga'
+and BIND_EQUIV_FAILURE = 'Y';
+COUNT(1)
+----------
+45121
+
+
+almost all (99%) of the cases, the reason sharing is preempted for SQL_ID 7zwq7z1nj7vga is
+BIND_EQUIV_FAILURE. The official Oracle documentation defines this reason: “The bind value’s selectivity does not
+match that used to optimize the existing child cursor.” This
+definition gives a clue to the reason Oracle is failing to share an existing cursor.
+
+select count(1)
+from
+v$sql_cs_selectivity
+where
+sql_id = '7zwq7z1nj7vga';
+COUNT(1)
+----------
+16,847,320
+
+
+
+What makes the situation even more dramatic is that,
+among those 100 child cursors, there are only four distinct
+execution plans, as the following shows:
+Click here to view code image
+SQL> select * from
+table(dbms_xplan.display_awr('7zwq7z1nj7vga'));
+Plan hash value: 587060143
+---------------------------------------------------------------
+| Id | Operation | Name | Rows |
+---------------------------------------------------------------
+| 0 | SELECT STATEMENT | | |
+| 1 | TABLE ACCESS BY INDEX ROWID| MHO_TABLES_ACS | 159K|
+| 2 | INDEX RANGE SCAN | TABL_ACS_INDX1 | 159K|
+---------------------------------------------------------------
+
+-----
+- dynamic sampling used for this statement (level=4)
+Plan hash value: 1114469665
+-----------------------------------------------------------------
+--
+| Id | Operation | Name | Rows |
+-----------------------------------------------------------------
+--
+| 0 | SELECT STATEMENT | | |
+| 1 | TABLE ACCESS BY INDEX ROWID| MHO_TABLES_ACS | 1 |
+| 2 | INDEX RANGE SCAN | TABL_ACS_INDX_PK | 1 |
+-----------------------------------------------------------------
+--
+Note
+-----
+- dynamic sampling used for this statement (level=4)
+--------------------
+Plan hash value: 2117864734
+-----------------------------------------------------------------
+--
+| Id | Operation | Name | Rows |
+-----------------------------------------------------------------
+--
+| 0 | SELECT STATEMENT | | |
+| 1 | TABLE ACCESS BY INDEX ROWID| MHO_TABLES_ACS | 1 |
+| 2 | INDEX RANGE SCAN | TABL_ACS_INDX2 | 1 |
+-----------------------------------------------------------------
+--
+Note
+-----
+- dynamic sampling used for this statement (level=4)
+--------------------
+Plan hash value: 3054136074
+-----------------------------------------------------------------
+---
+| Id | Operation | Name | Rows |
+-----------------------------------------------------------------
+---
+| 0 | SELECT STATEMENT | | |
+| 1 | TABLE ACCESS BY INDEX ROWID| MHO_TABLES_ACS | 159K|
+| 2 | INDEX RANGE SCAN | TABL_ACS_INDX3 | 159K|
+-----------------------------------------------------------------
+---
+Note
+-----
+- dynamic sampling used for this statement (level=4)
+
+considering that the application is using bind
+variables and therefore should normally reuse cursors and share resources
+
+
+let’s look at the SQL code of this query, which
+might give us a clue why we have been in such a situation:
+SELECT
+{list_of_columns}
+FROM
+mho_tables_acs
+WHERE
+col_1 =:1
+AND col_2 =:2
+AND col_3 =:3
+AND col_4 =:4
+AND col_5 =:5
+AND col_6 =:6
+AND col_7 =:7
+AND col_8 =:8
+AND col_9 >=:9;
+
+
+First, will a cursor using more than 14 bind
+variables be bind aware and therefore not be affected by
+ACS? Second, will a query like this be handled with a bindsensitive
+cursor if all nine columns do not possess a
+histogram but the unique range predicate applied on COL_9
+suffices to mark a cursor bind sensitive?
+
+
+a new child cursor is generated with a new range of selectivity. If the
+new child cursor (in fact, the new execution plan) is found to be equivalent to an existing one,
+
+
+This is addressed by the 11g database between sharing resources and optimizing SQL. Multiple optimal execution plans per SQL statement can
+be generated depending on the value of the peeked bind variable
+
+Q1) select sql_id ,child_number ,is_bind_sensitive ,is_bind_aware ,is_shareable
+     from v$sql where sql_id = '&PV';
+
+
+V$SQL_CS_STATISTICS view lists the statistics of the number of processed rows by the corresponding child cursor,
+the number of executions it has undergone so far, and the number of consumed buffers and CPU time.
+
+V$SQL_CS_HISTOGRAM view stores the number of cursor executions per bucket and is used to decide when it is time
+to mark a cursor bind aware
+
+
+V$SQL_CS_SELECTIVITY view begins to be useful only when a cursor has been marked bind aware. It contains
+information about the selectivity of the bind variable’s values, including a low and high value range per child cursor.
+
+goal of this section is to define the relationship that exists between the number of rows processed by a child
+cursor and the couple (BUCKET_ID, COUNT) of the V$SQL_CS_HISTOGRAM view.
+
+
+select
+child_number
+,executions
+,rows_processed
+from v$sql_cs_statistics
+where sql_id = 'f2pmwazy1rnfd' ;
+
+
+select child_number,bucket_id ,count
+from v$sql_cs_histogram where sql_id = 'f2pmwazy1rnfd' ;
+
+	
+	
+select sql_id,count(1) from
+v$sql where executions < 2 group by sql_id having count(1) > 10
+order by 2 desc;	
+
+
