@@ -1,16 +1,193 @@
 
-PROMPT PROMPT PROMPT SUMMARY OF PROCESS COUNT AND SESSION COUNT PROMPT __________________________________________ PROMPT select a.ProcessCount,b.SessionCount from (select count(1) ProcessCount from v$process) a, (select count(1) SessionCount from v$session) b / PROMPT PROMPT SESSION DETAILS PROMPT _______________ break on report compute SUM of tot on report compute SUM of active on report compute SUM of inactive on report col USERNAME for a15 select DECODE(username,NULL,'INTERNAL',USERNAME) Username, count(*) TOT, COUNT(DECODE(status,'ACTIVE',STATUS)) ACTIVE, COUNT(DECODE(status,'INACTIVE',STATUS)) INACTIVE from gv$session where status in ('ACTIVE','INACTIVE') group by username;
+-- Advanced Oracle Database Monitoring Script
+-- This script provides a comprehensive view of database activity
 
-prompt A-Script: Display CURRENT active sessions…
-select count() ,sql_id , case state when 'WAITING' then 'WAITING' else 'ON CPU' end state , case state when 'WAITING' then event else 'On CPU / runqueue' end event from gv$session where status='ACTIVE' and type !='BACKGROUND' and wait_class != 'Idle' and sid != (select sid from gv$mystat where rownum=1) group by sql_id , case state when 'WAITING' then 'WAITING' else 'ON CPU' end , case state when 'WAITING' then event else 'On CPU / runqueue' end order by count() desc /
+SET PAGESIZE 0
+SET LINESIZE 200
+SET FEEDBACK OFF
+SET VERIFY OFF
+SET HEADING OFF
+SET SERVEROUTPUT ON SIZE UNLIMITED
+SET TRIMSPOOL ON
 
-PROMPT PROMPT PROMPT NUMBER OF CONNECTED SESSIONS PROMPT ============================= select substr(a.spid,1,9) pid, substr(b.sid,1,5) sid, status, TO_CHAR(logon_time,'DD-Mon-YYYY HH24:MI:SS'), substr(b.serial#,1,5) ser#, substr(b.machine,1,6) box, substr(b.username,1,10) username, substr(b.osuser,1,8) os_user, substr(b.program,1,30) program from v$session b, v$process a where b.paddr = a.addr and type='USER' order by status;
+SPOOL advanced_monitoring_report.txt
 
-set pages 50000 lines 32767 col USERNAME for a10 col MACHINE for a15 col PROGRAM for a40
+PROMPT ============================================================
+PROMPT 1. PROCESS AND SESSION COUNT SUMMARY
+PROMPT ============================================================
+SELECT '1. PROCESS AND SESSION COUNT SUMMARY' FROM dual;
+PROMPT
 
-SELECT USERNAME,machine,inst_id,sid,serial#,PROGRAM, to_char(logon_time,'dd-mm-yy hh:mi:ss AM')"Logon Time", ROUND((SYSDATE-LOGON_TIME)(2460),1) as MINUTES_LOGGED_ON, ROUND(LAST_CALL_ET/60,1) as Minutes_FOR_CURRENT_SQL From gv$session WHERE STATUS='ACTIVE' AND USERNAME IS NOT NULL and ROUND((SYSDATE-LOGON_TIME)(2460),1) > 60 ORDER BY MINUTES_LOGGED_ON DESC;
+SELECT 'Process Count: ' || a.ProcessCount || ', Session Count: ' || b.SessionCount 
+FROM (SELECT COUNT(1) ProcessCount FROM v$process) a, 
+     (SELECT COUNT(1) SessionCount FROM v$session) b;
 
-SELECT LPAD(' ', 2*(LEVEL-1)) || sid || ' (' || username || ')' AS blocking_chain FROM ( SELECT sid, username, blocking_session FROM v$session -- Include sessions that are waiting (have a blocking_session) -- or sessions that are themselves blocking others. WHERE blocking_session IS NOT NULL OR sid IN (SELECT DISTINCT blocking_session FROM v$session WHERE blocking_session IS NOT NULL) ) START WITH blocking_session IS NULL CONNECT BY PRIOR sid = blocking_session;
+PROMPT
+SELECT 'Username: ' || DECODE(username, NULL, 'INTERNAL', USERNAME) || 
+       ', Total: ' || COUNT(*) || 
+       ', Active: ' || COUNT(DECODE(status, 'ACTIVE', STATUS)) || 
+       ', Inactive: ' || COUNT(DECODE(status, 'INACTIVE', STATUS))
+FROM v$session 
+WHERE status IN ('ACTIVE', 'INACTIVE')
+GROUP BY username
+ORDER BY username;
 
-set feedback off set serveroutput on size 9999 column username format a20 column sql_text format a55 word_wrapped begin for x in (select username||'('||sid||','||serial#||') ospid = '|| process || ' program = ' || program username, to_char(LOGON_TIME,' Day HH24:MI') logon_time, to_char(sysdate,' Day HH24:MI') current_time, sql_address, sql_hash_value from v$session where status = 'ACTIVE' and rawtohex(sql_address) <> '00' and username is not null ) loop for y in (select sql_text from v$sqlarea where address = x.sql_address ) loop if ( y.sql_text not like '%listener.get_cmd%' and y.sql_text not like '%RAWTOHEX(SQL_ADDRESS)%' ) then dbms_output.put_line( '--------------------' ); dbms_output.put_line( x.username ); dbms_output.put_line( x.logon_time || ' ' || x.current_time || ' SQL#=' || x.sql_hash_value); dbms_output.put_line( substr( y.sql_text, 1, 250 ) ); end if; end loop; end loop; end; /
+PROMPT
+PROMPT ============================================================
+PROMPT 2. ACTIVE SESSIONS WITH SQL
+PROMPT ============================================================
+SELECT '2. ACTIVE SESSIONS WITH SQL' FROM dual;
+PROMPT
 
+DECLARE
+    v_output VARCHAR2(4000);
+BEGIN
+    FOR x IN (
+        SELECT s.sid, 
+               s.serial#, 
+               s.username, 
+               s.machine, 
+               s.program, 
+               s.logon_time,
+               s.sql_id,
+               q.sql_text
+        FROM v$session s
+        LEFT JOIN v$sql q ON s.sql_id = q.sql_id
+        WHERE s.status = 'ACTIVE'
+        AND s.type != 'BACKGROUND'
+        AND s.username IS NOT NULL
+        ORDER BY s.logon_time
+    ) LOOP
+        v_output := 'SID: ' || x.sid || 
+                   ', User: ' || NVL(x.username, 'N/A') || 
+                   ', Machine: ' || SUBSTR(NVL(x.machine, 'N/A'), 1, 20) ||
+                   ', Program: ' || SUBSTR(NVL(x.program, 'N/A'), 1, 30) ||
+                   ', Logon: ' || TO_CHAR(x.logon_time, 'DD-MON-YYYY HH24:MI:SS');
+        DBMS_OUTPUT.PUT_LINE(v_output);
+
+        IF x.sql_id IS NOT NULL THEN
+            DBMS_OUTPUT.PUT_LINE('SQL_ID: ' || x.sql_id);
+            DBMS_OUTPUT.PUT_LINE('SQL: ' || SUBSTR(NVL(x.sql_text, 'N/A'), 1, 200));
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('SQL: None');
+        END IF;
+        DBMS_OUTPUT.PUT_LINE('----------------------------------------');
+    END LOOP;
+END;
+/
+
+PROMPT
+PROMPT ============================================================
+PROMPT 3. BLOCKING CHAIN
+PROMPT ============================================================
+SELECT '3. BLOCKING CHAIN' FROM dual;
+PROMPT
+
+SELECT LPAD(' ', 2*(LEVEL-1)) || sid || ' (' || NVL(username, 'N/A') || ')' AS blocking_chain 
+FROM (
+    SELECT sid, username, blocking_session 
+    FROM v$session
+    WHERE blocking_session IS NOT NULL 
+    OR sid IN (
+        SELECT DISTINCT blocking_session 
+        FROM v$session 
+        WHERE blocking_session IS NOT NULL
+    )
+) 
+START WITH blocking_session IS NULL 
+CONNECT BY PRIOR sid = blocking_session;
+
+PROMPT
+PROMPT ============================================================
+PROMPT 4. LONG RUNNING QUERIES (> 60 MINUTES)
+PROMPT ============================================================
+SELECT '4. LONG RUNNING QUERIES (> 60 MINUTES)' FROM dual;
+PROMPT
+
+SELECT 'User: ' || s.username || 
+       ', SID: ' || s.sid || 
+       ', Serial#: ' || s.serial#  || 
+       ', Machine: ' || SUBSTR(s.machine, 1, 15) || 
+       ', Program: ' || SUBSTR(s.program, 1, 30) || 
+       ', Logon: ' || TO_CHAR(s.logon_time, 'DD-MON-YY HH24:MI:SS AM') || 
+       ', Minutes Logged On: ' || ROUND((SYSDATE-s.LOGON_TIME)*24*60, 1) || 
+       ', Minutes for Current SQL: ' || ROUND(s.LAST_CALL_ET/60, 1)
+FROM v$session s
+WHERE s.STATUS = 'ACTIVE' 
+AND s.USERNAME IS NOT NULL 
+AND ROUND((SYSDATE-s.LOGON_TIME)*24*60, 1) > 60
+ORDER BY (SYSDATE-s.LOGON_TIME) DESC;
+
+PROMPT
+PROMPT ============================================================
+PROMPT 5. CURRENTLY RUNNING SQL WITH WAIT EVENTS
+PROMPT ============================================================
+SELECT '5. CURRENTLY RUNNING SQL WITH WAIT EVENTS' FROM dual;
+PROMPT
+
+SELECT 'Count: ' || COUNT(*) || 
+       ', SQL_ID: ' || sql_id || 
+       ', State: ' || CASE state WHEN 'WAITING' THEN 'WAITING' ELSE 'ON CPU' END || 
+       ', Event: ' || CASE state WHEN 'WAITING' THEN event ELSE 'On CPU / runqueue' END
+FROM v$session 
+WHERE status = 'ACTIVE' 
+AND type != 'BACKGROUND' 
+AND wait_class != 'Idle' 
+AND sid != (SELECT sid FROM v$mystat WHERE rownum = 1)
+GROUP BY sql_id, 
+         CASE state WHEN 'WAITING' THEN 'WAITING' ELSE 'ON CPU' END, 
+         CASE state WHEN 'WAITING' THEN event ELSE 'On CPU / runqueue' END
+ORDER BY COUNT(*) DESC;
+
+PROMPT
+PROMPT ============================================================
+PROMPT 6. PLAN CHANGES FOR CURRENTLY RUNNING SQL
+PROMPT ============================================================
+SELECT '6. PLAN CHANGES FOR CURRENTLY RUNNING SQL' FROM dual;
+PROMPT
+
+DECLARE
+    v_output VARCHAR2(4000);
+BEGIN
+    FOR x IN (
+        SELECT DISTINCT s.sql_id
+        FROM v$session s
+        WHERE s.status = 'ACTIVE'
+        AND s.type != 'BACKGROUND'
+        AND s.sql_id IS NOT NULL
+        AND s.username IS NOT NULL
+    ) LOOP
+        -- Check if this SQL has multiple plans
+        FOR y IN (
+            SELECT sql_id, plan_hash_value, timestamp, executions, 
+                   elapsed_time/DECODE(executions, 0, 1, executions)/1000000 avg_elapsed_sec
+            FROM v$sql_plan_statistics_all
+            WHERE sql_id = x.sql_id
+            GROUP BY sql_id, plan_hash_value, timestamp, executions, elapsed_time
+            ORDER BY timestamp DESC
+        ) LOOP
+            v_output := 'SQL_ID: ' || y.sql_id || 
+                       ', Plan Hash: ' || y.plan_hash_value || 
+                       ', Executions: ' || y.executions || 
+                       ', Avg Elapsed (sec): ' || TO_CHAR(y.avg_elapsed_sec, '999990.999');
+            DBMS_OUTPUT.PUT_LINE(v_output);
+        END LOOP;
+
+        -- Get SQL text for reference
+        FOR z IN (
+            SELECT SUBSTR(sql_text, 1, 100) sql_text
+            FROM v$sql
+            WHERE sql_id = x.sql_id
+            AND ROWNUM = 1
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE('SQL: ' || z.sql_text);
+        END LOOP;
+
+        DBMS_OUTPUT.PUT_LINE('----------------------------------------');
+    END LOOP;
+END;
+/
+
+SPOOL OFF
+
+PROMPT Report generated as advanced_monitoring_report.txt
